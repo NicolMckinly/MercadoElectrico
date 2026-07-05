@@ -1,0 +1,19 @@
+# Entorno virtual (cada quien lo crea en su propia computadora)
+venv/
+
+# Archivo con credenciales - NUNCA debe subirse a GitHub
+.env
+
+# Archivos que Python genera automáticamente
+__pycache__/
+*.pyc
+
+# Base de datos (puede pesar mucho, y crece con el tiempo)
+BaseDatos/*.db
+
+# Logs (se generan solos cada vez que corre el programa)
+Logs/*.log
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db

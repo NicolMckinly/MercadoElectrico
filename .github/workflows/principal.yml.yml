@@ -1,0 +1,67 @@
+name: Sistema Mercado Electrico
+
+# Aqui le decimos a GitHub CUANDO debe ejecutar el sistema automaticamente.
+# La hora se escribe en formato UTC (hora de Greenwich), que es 5 horas
+# mas adelante que la hora de Colombia. Por ejemplo, si queremos que
+# corra a las 7:00 AM en Colombia, hay que escribir las 12:00 UTC.
+on:
+  schedule:
+    # Todos los dias a las 7:00 AM hora Colombia (12:00 UTC) - Modulo 1
+    - cron: '0 12 * * *'
+    # Martes y jueves a las 8:00 AM hora Colombia (13:00 UTC) - Modulo 3, 4 y 5
+    - cron: '0 13 * * 2,4'
+  # Esto permite tambien ejecutarlo manualmente desde GitHub, con un boton,
+  # util para probar que todo funciona sin esperar a la hora programada.
+  workflow_dispatch:
+
+jobs:
+  ejecutar_sistema:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Paso 1: Descarga una copia del codigo del repositorio
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      # Paso 2: Instala Python en la maquina virtual de GitHub
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # Paso 3: Instala todas las librerias que el proyecto necesita
+      - name: Instalar dependencias
+        run: |
+          pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl
+
+      # Paso 4: Crea el archivo .env con las credenciales guardadas
+      # de forma segura en los "Secrets" de GitHub (nunca quedan
+      # visibles en el codigo ni en los registros de ejecucion).
+      - name: Crear archivo de credenciales
+        run: |
+          echo "CORREO_DESTINO=${{ secrets.CORREO_DESTINO }}" >> .env
+          echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
+          echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
+          echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
+
+      # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
+      - name: Ejecutar proceso diario
+        run: python main_diario.py
+
+      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5) -
+      # solo se ejecuta realmente los martes (dia 2) y jueves (dia 4),
+      # gracias a la condicion "if" de abajo.
+      - name: Ejecutar proceso hidrologico (martes y jueves)
+        if: github.event.schedule == '0 13 * * 2,4'
+        run: python main_hidrologico.py
+
+      # Paso 7: Guarda los cambios en la base de datos y los informes
+      # generados, subiendolos de vuelta al repositorio, para que el
+      # historico nunca se pierda entre una ejecucion y otra.
+      - name: Guardar cambios en el repositorio
+        run: |
+          git config --global user.name "Sistema Automatico"
+          git config --global user.email "sistema@mercadoelectrico.local"
+          git add BaseDatos/mercado_electrico.db Reportes/*.pdf Graficas/*.png
+          git commit -m "Actualizacion automatica $(date +'%Y-%m-%d %H:%M')" || echo "No hay cambios nuevos para guardar"
+          git push

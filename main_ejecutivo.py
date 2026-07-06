@@ -73,6 +73,22 @@ def ejecutar_resumen_ejecutivo():
     except Exception as error:
         print("ERROR generando/enviando el resumen ejecutivo: " + str(error))
 
+    # Junto con el resumen ejecutivo, tambien enviamos el Informe
+    # del Mercado de Gas.
+    try:
+        from generar_informe_gas import generar_informe_gas
+        ruta_informe_gas = generar_informe_gas()
+
+        if ruta_informe_gas is not None:
+            from enviar_correo import enviar_informe_por_correo
+            enviar_informe_por_correo(
+                ruta_informe_gas,
+                "Informe del Mercado de Gas Natural",
+                "Adjunto encontraras el informe del mercado de gas natural, con las convocatorias detectadas de Ecopetrol."
+            )
+    except Exception as error:
+        print("ERROR generando/enviando el informe de gas: " + str(error))
+
     print("=" * 60)
     print("PROCESO TERMINADO - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)

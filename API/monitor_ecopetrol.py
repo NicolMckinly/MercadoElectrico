@@ -165,7 +165,7 @@ def buscar_convocatorias_nuevas():
         if identificador not in identificadores_ya_vistos:
             convocatoria["identificador"] = identificador
             nuevas.append(convocatoria)
-            guardar_convocatoria_vista(identificador, convocatoria["titulo"])
+            guardar_convocatoria_vista(identificador, convocatoria)
 
     return nuevas
 

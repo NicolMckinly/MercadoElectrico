@@ -143,11 +143,19 @@ def crear_tablas():
     """)
 
     # Tabla de convocatorias de Ecopetrol ya vistas, para detectar
-    # cuales son nuevas y evitar avisar dos veces de la misma.
+    # cuales son nuevas y evitar avisar dos veces de la misma. Se
+    # guardan tambien los detalles tecnicos extraidos, para poder
+    # armar el Informe del Mercado de Gas con el historico completo.
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS convocatorias_ecopetrol (
             identificador TEXT PRIMARY KEY,
             titulo TEXT,
+            fecha_publicacion TEXT,
+            fuente TEXT,
+            cantidad TEXT,
+            modalidad TEXT,
+            plazo TEXT,
+            garantia TEXT,
             fecha_deteccion TEXT
         )
     """)
@@ -623,10 +631,18 @@ def consultar_convocatorias_vistas():
     return set(fila[0] for fila in resultados)
 
 
-def guardar_convocatoria_vista(identificador, titulo):
+def guardar_convocatoria_vista(identificador, convocatoria):
     """
-    Registra una convocatoria de Ecopetrol como ya vista, para no
-    volver a notificarla en el futuro.
+    Registra una convocatoria de Ecopetrol como ya vista, guardando
+    todos sus detalles tecnicos, para no volver a notificarla en el
+    futuro y para poder armar el historico del Informe de Mercado
+    de Gas.
+
+    Parametros:
+        identificador (str): identificador unico de la convocatoria.
+        convocatoria (dict): diccionario con "titulo", "fecha_publicacion",
+                              "fuente", "cantidad", "modalidad", "plazo",
+                              "garantia".
     """
     crear_tablas()
 
@@ -635,12 +651,38 @@ def guardar_convocatoria_vista(identificador, titulo):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     cursor.execute("""
-        INSERT INTO convocatorias_ecopetrol (identificador, titulo, fecha_deteccion)
-        VALUES (?, ?, ?)
+        INSERT INTO convocatorias_ecopetrol (
+            identificador, titulo, fecha_publicacion, fuente,
+            cantidad, modalidad, plazo, garantia, fecha_deteccion
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(identificador) DO NOTHING
-    """, (identificador, titulo, hoy))
+    """, (
+        identificador, convocatoria["titulo"], convocatoria["fecha_publicacion"],
+        convocatoria["fuente"], convocatoria["cantidad"], convocatoria["modalidad"],
+        convocatoria["plazo"], convocatoria["garantia"], hoy
+    ))
     conexion.commit()
     conexion.close()
+
+
+def consultar_todas_convocatorias():
+    """
+    Trae el historico completo de convocatorias de Ecopetrol
+    detectadas, ordenado de la mas reciente a la mas antigua.
+
+    Retorna:
+        Un DataFrame con todas las columnas de la tabla.
+    """
+    crear_tablas()
+
+    conexion = obtener_conexion()
+    df = pd.read_sql_query(
+        "SELECT * FROM convocatorias_ecopetrol ORDER BY fecha_deteccion DESC",
+        conexion
+    )
+    conexion.close()
+    return df
 
 
 def guardar_noticias(lista_noticias):

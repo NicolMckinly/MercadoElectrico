@@ -46,6 +46,14 @@ def ejecutar_proceso_diario():
     except Exception as error:
         print("ERROR revisando alertas: " + str(error))
 
+    # ---------- Revisar Resumen Ejecutivo Quincenal (Modulo 6) ----------
+    print("\n--- Revisando Resumen Ejecutivo Quincenal ---")
+    try:
+        from main_ejecutivo import ejecutar_resumen_ejecutivo
+        ejecutar_resumen_ejecutivo()
+    except Exception as error:
+        print("ERROR revisando el resumen ejecutivo: " + str(error))
+
     from base_datos import ya_se_envio_hoy, marcar_enviado_hoy
 
     # Condicion 1: si el informe de hoy ya se envio, no hacemos nada mas.

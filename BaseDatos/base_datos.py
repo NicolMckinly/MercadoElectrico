@@ -565,6 +565,35 @@ def marcar_enviado_hoy(nombre_proceso):
     print("Registrado: '" + nombre_proceso + "' ya se envio hoy (" + hoy + ").")
 
 
+def dias_desde_ultimo_envio(nombre_proceso):
+    """
+    Calcula cuantos dias han pasado desde la ultima vez que se envio
+    un proceso especifico. Util para procesos periodicos que no son
+    diarios (por ejemplo, cada 15 dias).
+
+    Retorna:
+        Un numero entero de dias, o None si el proceso nunca se ha
+        enviado (lo cual se debe interpretar como "hace falta enviarlo").
+    """
+    crear_tablas()
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT MAX(fecha) FROM control_envios WHERE proceso = ?",
+        (nombre_proceso,)
+    )
+    resultado = cursor.fetchone()
+    conexion.close()
+
+    if resultado is None or resultado[0] is None:
+        return None
+
+    fecha_ultimo_envio = datetime.strptime(resultado[0], "%Y-%m-%d")
+    dias_transcurridos = (datetime.now() - fecha_ultimo_envio).days
+    return dias_transcurridos
+
+
 def guardar_noticias(lista_noticias):
     """
     Guarda una lista de noticias en la base de datos. Si una noticia

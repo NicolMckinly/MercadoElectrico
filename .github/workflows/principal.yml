@@ -57,6 +57,12 @@ jobs:
         if: github.event.schedule == '0 13 * * 2,4'
         run: python main_hidrologico.py
 
+      # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
+      # Ejecutivo Quincenal (Modulo 6). Solo actua los dias 15 y el
+      # ultimo dia de cada mes; cualquier otro dia no hace nada.
+      - name: Revisar Resumen Ejecutivo Quincenal
+        run: python main_ejecutivo.py
+
       # Paso 7: Guarda los cambios en la base de datos y los informes
       # generados, subiendolos de vuelta al repositorio, para que el
       # historico nunca se pierda entre una ejecucion y otra.

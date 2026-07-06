@@ -35,6 +35,17 @@ def ejecutar_proceso_diario():
     print("REVISANDO CONDICIONES - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
+    # ---------- Revisar y enviar alertas (Modulo 7) ----------
+    # Esto se revisa siempre, independientemente de si el informe
+    # diario completo ya se envio o no, para detectar eventos
+    # importantes lo antes posible.
+    print("\n--- Revisando alertas ---")
+    try:
+        from enviar_alertas import revisar_y_enviar_alertas
+        revisar_y_enviar_alertas()
+    except Exception as error:
+        print("ERROR revisando alertas: " + str(error))
+
     from base_datos import ya_se_envio_hoy, marcar_enviado_hoy
 
     # Condicion 1: si el informe de hoy ya se envio, no hacemos nada mas.

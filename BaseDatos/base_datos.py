@@ -131,6 +131,17 @@ def crear_tablas():
         )
     """)
 
+    # Tabla de control de envios: registra si un proceso (ej. el
+    # informe diario) ya se ejecuto/envio en una fecha especifica,
+    # para no repetirlo varias veces el mismo dia.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS control_envios (
+            proceso TEXT,
+            fecha TEXT,
+            PRIMARY KEY (proceso, fecha)
+        )
+    """)
+
     conexion.commit()
     conexion.close()
 
@@ -503,6 +514,55 @@ def consultar_fecha_mas_reciente_generacion():
     if resultado is None:
         return None
     return resultado[0]
+
+
+def ya_se_envio_hoy(nombre_proceso):
+    """
+    Revisa si un proceso especifico (por ejemplo, "diario" o
+    "hidrologico") ya se ejecuto/envio el dia de hoy, para evitar
+    enviar el mismo informe mas de una vez.
+
+    Parametros:
+        nombre_proceso (str): identificador del proceso, ej. "diario".
+
+    Retorna:
+        True si ya se envio hoy, False si no.
+    """
+    crear_tablas()
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute(
+        "SELECT 1 FROM control_envios WHERE proceso = ? AND fecha = ?",
+        (nombre_proceso, hoy)
+    )
+    resultado = cursor.fetchone()
+    conexion.close()
+
+    return resultado is not None
+
+
+def marcar_enviado_hoy(nombre_proceso):
+    """
+    Registra que un proceso especifico ya se envio el dia de hoy.
+    """
+    crear_tablas()
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("""
+        INSERT INTO control_envios (proceso, fecha)
+        VALUES (?, ?)
+        ON CONFLICT(proceso, fecha) DO NOTHING
+    """, (nombre_proceso, hoy))
+    conexion.commit()
+    conexion.close()
+
+    print("Registrado: '" + nombre_proceso + "' ya se envio hoy (" + hoy + ").")
 
 
 def guardar_noticias(lista_noticias):

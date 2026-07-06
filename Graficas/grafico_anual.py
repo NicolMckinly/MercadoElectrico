@@ -174,7 +174,6 @@ def generar_grafico_anual():
                 )
 
     nombre_anio = hoy.strftime("%Y")
-    ejes.set_title("Tendencia Anual - Precio de Bolsa Nacional " + nombre_anio, fontsize=14, fontweight="bold")
     ejes.set_ylabel("Precio ($/kWh)")
     ejes.set_xlabel("Mes")
 

@@ -32,6 +32,29 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 
 def ejecutar_proceso_diario():
     print("=" * 60)
+    print("REVISANDO CONDICIONES - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("=" * 60)
+
+    from base_datos import ya_se_envio_hoy, marcar_enviado_hoy
+
+    # Condicion 1: si el informe de hoy ya se envio, no hacemos nada mas.
+    if ya_se_envio_hoy("diario"):
+        print("El informe diario ya fue enviado hoy. No se hace nada.")
+        return
+
+    # Condicion 2: si el IMAR de mañana aun no esta publicado por XM,
+    # esperamos (el sistema volvera a revisar en 10 minutos, segun
+    # la programacion de GitHub Actions).
+    from imar import verificar_imar_de_manana_publicado
+
+    if not verificar_imar_de_manana_publicado():
+        print("El IMAR de mañana aun no ha sido publicado por XM. Se revisara de nuevo en 10 minutos.")
+        return
+
+    print("El IMAR de mañana ya esta publicado. Procediendo con el informe diario completo.")
+    print("")
+
+    print("=" * 60)
     print("INICIANDO PROCESO DIARIO - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
@@ -89,11 +112,13 @@ def ejecutar_proceso_diario():
     try:
         if ruta_informe is not None:
             from enviar_correo import enviar_informe_por_correo
-            enviar_informe_por_correo(
+            enviado = enviar_informe_por_correo(
                 ruta_informe,
                 "Informe Diario - Precio de Bolsa Nacional",
                 "Adjunto encontraras el informe diario del Precio de Bolsa Nacional, generado automaticamente."
             )
+            if enviado:
+                marcar_enviado_hoy("diario")
         else:
             print("No se genero el informe, asi que no se envia correo.")
     except Exception as error:

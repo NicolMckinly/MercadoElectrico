@@ -132,6 +132,21 @@ def obtener_imar(fecha_inicio, fecha_fin):
     return df
 
 
+def verificar_imar_de_manana_publicado():
+    """
+    Verifica rapidamente (con una sola peticion) si el IMAR de
+    mañana ya esta publicado por XM, sin descargar ni guardar nada.
+    Esto es lo que usa el Modulo 2 (monitor permanente) para saber
+    cuando ya es momento de generar y enviar el informe diario.
+
+    Retorna:
+        True si ya esta publicado, False si no.
+    """
+    manana = datetime.now() + timedelta(days=1)
+    resultado = obtener_imar_de_un_dia(manana)
+    return resultado is not None
+
+
 if __name__ == "__main__":
 
     # El IMAR se publica con un dia de anticipacion, asi que siempre

@@ -6,8 +6,10 @@ name: Sistema Mercado Electrico
 # corra a las 7:00 AM en Colombia, hay que escribir las 12:00 UTC.
 on:
   schedule:
-    # Todos los dias a las 7:00 AM hora Colombia (12:00 UTC) - Modulo 1
-    - cron: '0 12 * * *'
+    # Revisa cada 10 minutos si el IMAR de mañana ya esta publicado.
+    # Si ya se envio el informe hoy, o si el IMAR aun no esta listo,
+    # el programa no hace nada y espera a la siguiente revision.
+    - cron: '*/10 * * * *'
     # Martes y jueves a las 8:00 AM hora Colombia (13:00 UTC) - Modulo 3, 4 y 5
     - cron: '0 13 * * 2,4'
   # Esto permite tambien ejecutarlo manualmente desde GitHub, con un boton,

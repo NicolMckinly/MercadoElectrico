@@ -45,35 +45,54 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
 COLOR_TEXTO = colors.black
 COLOR_FONDO_ENCABEZADO_TABLA = colors.HexColor("#333333")
-COLOR_FONDO_TARJETA = colors.HexColor("#F2F2F2")
-COLOR_BORDE = colors.HexColor("#CCCCCC")
+COLOR_FONDO_TARJETA = colors.HexColor("#F7F7F7")
+COLOR_BORDE = colors.HexColor("#DDDDDD")
 COLOR_RESALTADO_ALTO = colors.HexColor("#B6D7A8")
 COLOR_RESALTADO_BAJO = colors.HexColor("#FFE599")
 
+COLOR_ACENTO_PRECIO = colors.HexColor("#1F4E79")
+COLOR_ACENTO_ESCASEZ = colors.HexColor("#B22222")
+COLOR_ACENTO_VARIACION = colors.HexColor("#1F6F50")
+COLOR_ACENTO_PROMEDIO = colors.HexColor("#D9822B")
+
 TAMANO_FUENTE_BASE = 12
+ANCHO_TARJETA = 4.3 * cm
 
 
-def _crear_tarjeta_kpi(titulo, valor):
+def _crear_tarjeta_kpi(titulo, valor, color_acento):
+    """
+    Crea una tarjeta KPI con tamano y tipografia uniformes, y una
+    franja de color en la parte superior a modo de acento visual.
+    """
     estilo_titulo = ParagraphStyle(
         "TituloTarjeta", fontSize=9, textColor=COLOR_TEXTO,
-        alignment=TA_CENTER, spaceAfter=2, fontName="Helvetica-Bold"
+        alignment=TA_CENTER, spaceAfter=4, fontName="Helvetica-Bold",
+        leading=12
     )
     estilo_valor = ParagraphStyle(
-        "ValorTarjeta", fontSize=15, textColor=COLOR_TEXTO,
+        "ValorTarjeta", fontSize=14, textColor=color_acento,
         alignment=TA_CENTER, fontName="Helvetica-Bold"
     )
 
+    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm])
+    franja_acento.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), color_acento),
+    ]))
+
     contenido = [
+        [franja_acento],
         [Paragraph(titulo, estilo_titulo)],
         [Paragraph(valor, estilo_valor)]
     ]
 
-    tabla = Table(contenido, colWidths=[4.2 * cm])
+    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm, 1.2 * cm, 1.1 * cm])
     tabla.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), COLOR_FONDO_TARJETA),
-        ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("SPAN", (0, 0), (0, 0)),
+        ("BACKGROUND", (0, 1), (-1, -1), COLOR_FONDO_TARJETA),
+        ("BOX", (0, 0), (-1, -1), 0.75, COLOR_BORDE),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
     return tabla
@@ -140,12 +159,14 @@ def generar_informe_diario():
 
     tarjeta_precio = _crear_tarjeta_kpi(
         "Precio Bolsa Actual (" + estadisticas["fuente_dia_mas_reciente"] + ")",
-        "{:.0f}".format(estadisticas["precio_dia_mas_reciente"]) + " $/kWh"
+        "{:.0f}".format(estadisticas["precio_dia_mas_reciente"]) + " $/kWh",
+        COLOR_ACENTO_PRECIO
     )
 
     tarjeta_escasez = _crear_tarjeta_kpi(
         "Precio de Escasez",
-        "{:.0f}".format(valor_escasez) + " $/kWh" if valor_escasez is not None else "N/D"
+        "{:.0f}".format(valor_escasez) + " $/kWh" if valor_escasez is not None else "N/D",
+        COLOR_ACENTO_ESCASEZ
     )
 
     if estadisticas["variacion_diaria"] is not None:
@@ -153,11 +174,12 @@ def generar_informe_diario():
     else:
         texto_variacion = "N/D"
 
-    tarjeta_variacion = _crear_tarjeta_kpi("Variacion Diaria", texto_variacion)
+    tarjeta_variacion = _crear_tarjeta_kpi("Variacion Diaria", texto_variacion, COLOR_ACENTO_VARIACION)
 
     tarjeta_promedio = _crear_tarjeta_kpi(
         "Promedio Mensual",
-        "{:.0f}".format(estadisticas["promedio_mensual"]) + " $/kWh" if estadisticas["promedio_mensual"] is not None else "N/D"
+        "{:.0f}".format(estadisticas["promedio_mensual"]) + " $/kWh" if estadisticas["promedio_mensual"] is not None else "N/D",
+        COLOR_ACENTO_PROMEDIO
     )
 
     fila_tarjetas = Table(
@@ -222,6 +244,13 @@ def generar_informe_diario():
     ]))
     elementos.append(tabla_estadisticas)
 
+    elementos.append(Spacer(1, 10))
+    elementos.append(Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion))
+    if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
+        elementos.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+    else:
+        elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
+
     elementos.append(PageBreak())
     elementos.append(Paragraph("IMAR del Dia Siguiente - Periodo a Periodo", estilo_seccion))
 
@@ -278,13 +307,6 @@ def generar_informe_diario():
         elementos.append(tabla_imar_pdf)
     else:
         elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado por XM.", estilo_cuerpo))
-
-    elementos.append(PageBreak())
-    elementos.append(Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion))
-    if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
-        elementos.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
-    else:
-        elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
 
     documento.build(elementos)
 

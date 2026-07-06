@@ -142,6 +142,16 @@ def crear_tablas():
         )
     """)
 
+    # Tabla de convocatorias de Ecopetrol ya vistas, para detectar
+    # cuales son nuevas y evitar avisar dos veces de la misma.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS convocatorias_ecopetrol (
+            identificador TEXT PRIMARY KEY,
+            titulo TEXT,
+            fecha_deteccion TEXT
+        )
+    """)
+
     conexion.commit()
     conexion.close()
 
@@ -592,6 +602,45 @@ def dias_desde_ultimo_envio(nombre_proceso):
     fecha_ultimo_envio = datetime.strptime(resultado[0], "%Y-%m-%d")
     dias_transcurridos = (datetime.now() - fecha_ultimo_envio).days
     return dias_transcurridos
+
+
+def consultar_convocatorias_vistas():
+    """
+    Trae el conjunto de identificadores de convocatorias de Ecopetrol
+    que ya han sido detectadas anteriormente.
+
+    Retorna:
+        Un set (conjunto) de strings con los identificadores.
+    """
+    crear_tablas()
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("SELECT identificador FROM convocatorias_ecopetrol")
+    resultados = cursor.fetchall()
+    conexion.close()
+
+    return set(fila[0] for fila in resultados)
+
+
+def guardar_convocatoria_vista(identificador, titulo):
+    """
+    Registra una convocatoria de Ecopetrol como ya vista, para no
+    volver a notificarla en el futuro.
+    """
+    crear_tablas()
+
+    hoy = datetime.now().strftime("%Y-%m-%d")
+
+    conexion = obtener_conexion()
+    cursor = conexion.cursor()
+    cursor.execute("""
+        INSERT INTO convocatorias_ecopetrol (identificador, titulo, fecha_deteccion)
+        VALUES (?, ?, ?)
+        ON CONFLICT(identificador) DO NOTHING
+    """, (identificador, titulo, hoy))
+    conexion.commit()
+    conexion.close()
 
 
 def guardar_noticias(lista_noticias):

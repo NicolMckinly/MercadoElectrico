@@ -54,6 +54,14 @@ def ejecutar_proceso_diario():
     except Exception as error:
         print("ERROR revisando el resumen ejecutivo: " + str(error))
 
+    # ---------- Revisar convocatorias de gas natural de Ecopetrol ----------
+    print("\n--- Revisando convocatorias de Ecopetrol ---")
+    try:
+        from enviar_alerta_ecopetrol import revisar_y_enviar_alerta_ecopetrol
+        revisar_y_enviar_alerta_ecopetrol()
+    except Exception as error:
+        print("ERROR revisando convocatorias de Ecopetrol: " + str(error))
+
     from base_datos import ya_se_envio_hoy, marcar_enviado_hoy
 
     # Condicion 1: si el informe de hoy ya se envio, no hacemos nada mas.

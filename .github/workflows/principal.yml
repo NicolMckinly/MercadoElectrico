@@ -34,7 +34,7 @@ jobs:
       # Paso 3: Instala todas las librerias que el proyecto necesita
       - name: Instalar dependencias
         run: |
-          pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl
+          pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl beautifulsoup4
 
       # Paso 4: Crea el archivo .env con las credenciales guardadas
       # de forma segura en los "Secrets" de GitHub (nunca quedan

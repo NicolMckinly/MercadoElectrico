@@ -35,10 +35,20 @@ jobs:
       # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
       - name: Ejecutar proceso diario
         run: python main_diario.py
-      # Paso 6: FORZADO TEMPORALMENTE para probar hoy - luego hay que
-      # devolverlo a la version con el control de dia y hora.
+      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
+      # solo los martes y jueves, entre las 8:00 y 8:14 AM hora Colombia
+      # (13:00-13:14 UTC), para que se ejecute una sola vez ese dia.
       - name: Ejecutar proceso hidrologico (martes y jueves)
-        run: python main_hidrologico.py
+        run: |
+          DIA=$(date -u +%u)
+          HORA=$(date -u +%H)
+          MINUTO=$(date -u +%M)
+          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" = "13" ] && [ "$MINUTO" -lt "15" ]; then
+            echo "Es martes o jueves entre 8:00-8:14 AM Colombia, ejecutando proceso hidrologico..."
+            python main_hidrologico.py
+          else
+            echo "No corresponde ejecutar el proceso hidrologico en este momento."
+          fi
       # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
       # Ejecutivo Quincenal (Modulo 6). Solo actua los dias 15 y el
       # ultimo dia de cada mes; cualquier otro dia no hace nada.
@@ -47,11 +57,18 @@ jobs:
       # Paso 7: Guarda los cambios en la base de datos y los informes
       # generados, subiendolos de vuelta al repositorio, para que el
       # historico nunca se pierda entre una ejecucion y otra.
+      #
+      # Los archivos PDF, PNG y la base de datos son "binarios" y se
+      # regeneran completos en cada ejecucion, asi que no tiene sentido
+      # intentar "combinar" version vieja y nueva si hay conflicto: le
+      # decimos a Git que, ante un conflicto, siempre se quede con la
+      # version que se acaba de generar en esta ejecucion ("-X ours").
       - name: Guardar cambios en el repositorio
         run: |
           git config --global user.name "Sistema Automatico"
           git config --global user.email "sistema@mercadoelectrico.local"
+          git config --global pull.rebase false
           git add -f BaseDatos/mercado_electrico.db Reportes/*.pdf Graficas/*.png
           git commit -m "Actualizacion automatica $(date +'%Y-%m-%d %H:%M')" || echo "No hay cambios nuevos para guardar"
-          git pull --rebase origin master
+          git pull origin master --no-edit -X ours
           git push

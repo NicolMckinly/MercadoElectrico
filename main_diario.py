@@ -9,6 +9,7 @@ de principio a fin sin intervencion manual:
 1. Descarga el Precio de Bolsa mas reciente y lo guarda.
 2. Descarga el IMAR mas reciente (incluyendo el de mañana) y lo guarda.
 3. Descarga el Precio de Escasez vigente y lo guarda.
+3.5. Descarga la Generacion por Fuente y la guarda.
 4. Genera el grafico mensual y el grafico anual.
 5. Genera el informe PDF completo.
 6. Envia el informe por correo.
@@ -124,6 +125,22 @@ def ejecutar_proceso_diario():
             guardar_precio_escasez(fecha_escasez, valor_escasez)
     except Exception as error:
         print("ERROR en Precio de Escasez: " + str(error))
+
+    # ---------- 3.5 Generacion por Fuente ----------
+    # Se descarga un rango de varios dias hacia atras (no solo ayer),
+    # para que si algun dia falla la descarga (por ejemplo porque el
+    # IDO aun no habia publicado, o hubo un error de red), se vuelva
+    # a intentar automaticamente al dia siguiente sin dejar huecos.
+    print("\n--- PASO 3.5: Descargando Generacion por Fuente ---")
+    try:
+        from generacion_por_fuente import descargar_generacion_rango
+        from datetime import timedelta
+
+        fecha_fin_gen = datetime.now() - timedelta(days=1)
+        fecha_inicio_gen = fecha_fin_gen - timedelta(days=8)
+        descargar_generacion_rango(fecha_inicio_gen, fecha_fin_gen)
+    except Exception as error:
+        print("ERROR en Generacion por Fuente: " + str(error))
 
     # ---------- 4. Generar informe PDF (incluye los graficos) ----------
     print("\n--- PASO 4: Generando informe PDF ---")

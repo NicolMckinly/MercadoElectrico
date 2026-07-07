@@ -36,15 +36,17 @@ jobs:
       - name: Ejecutar proceso diario
         run: python main_diario.py
       # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
-      # solo los martes y jueves, entre las 8:00 y 8:14 AM hora Colombia
-      # (13:00-13:14 UTC), para que se ejecute una sola vez ese dia.
+      # solo los martes y jueves, entre las 8:00 AM y las 12:00 PM
+      # hora Colombia (13:00-16:59 UTC). Dentro de esa ventana, el
+      # propio main_hidrologico.py se encarga de revisar si los datos
+      # de ayer ya estan publicados y si el correo ya se envio hoy,
+      # para mandarlo una sola vez, lo mas temprano posible.
       - name: Ejecutar proceso hidrologico (martes y jueves)
         run: |
           DIA=$(date -u +%u)
           HORA=$(date -u +%H)
-          MINUTO=$(date -u +%M)
-          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" = "13" ] && [ "$MINUTO" -lt "15" ]; then
-            echo "Es martes o jueves entre 8:00-8:14 AM Colombia, ejecutando proceso hidrologico..."
+          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
+            echo "Es martes o jueves, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
             python main_hidrologico.py
           else
             echo "No corresponde ejecutar el proceso hidrologico en este momento."
@@ -57,12 +59,6 @@ jobs:
       # Paso 7: Guarda los cambios en la base de datos y los informes
       # generados, subiendolos de vuelta al repositorio, para que el
       # historico nunca se pierda entre una ejecucion y otra.
-      #
-      # Los archivos PDF, PNG y la base de datos son "binarios" y se
-      # regeneran completos en cada ejecucion, asi que no tiene sentido
-      # intentar "combinar" version vieja y nueva si hay conflicto: le
-      # decimos a Git que, ante un conflicto, siempre se quede con la
-      # version que se acaba de generar en esta ejecucion ("-X ours").
       - name: Guardar cambios en el repositorio
         run: |
           git config --global user.name "Sistema Automatico"

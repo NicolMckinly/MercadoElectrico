@@ -35,11 +35,22 @@ jobs:
       # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
       - name: Ejecutar proceso diario
         run: python main_diario.py
-      # Paso 6: FORZADO TEMPORALMENTE para probar la logica de deteccion
-      # de datos hidrologicos - luego hay que devolverlo al control de
-      # dia y hora (martes/jueves 8am-12pm).
+      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
+      # solo los martes y jueves, entre las 8:00 AM y las 12:00 PM
+      # hora Colombia (13:00-16:59 UTC). Dentro de esa ventana, el
+      # propio main_hidrologico.py se encarga de revisar si los datos
+      # de ayer ya estan publicados y si el correo ya se envio hoy,
+      # para mandarlo una sola vez, lo mas temprano posible.
       - name: Ejecutar proceso hidrologico (martes y jueves)
-        run: python main_hidrologico.py
+        run: |
+          DIA=$(date -u +%u)
+          HORA=$(date -u +%H)
+          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
+            echo "Es martes o jueves, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
+            python main_hidrologico.py
+          else
+            echo "No corresponde ejecutar el proceso hidrologico en este momento."
+          fi
       # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
       # Ejecutivo Quincenal (Modulo 6). Solo actua los dias 15 y el
       # ultimo dia de cada mes; cualquier otro dia no hace nada.

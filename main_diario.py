@@ -9,10 +9,13 @@ de principio a fin sin intervencion manual:
 1. Descarga el Precio de Bolsa mas reciente y lo guarda.
 2. Descarga el IMAR mas reciente (incluyendo el de mañana) y lo guarda.
 3. Descarga el Precio de Escasez vigente y lo guarda.
-3.5. Descarga la Generacion por Fuente y la guarda.
 4. Genera el grafico mensual y el grafico anual.
 5. Genera el informe PDF completo.
 6. Envia el informe por correo.
+
+La descarga de Generacion por Fuente se ejecuta siempre, en cada
+corrida del workflow (cada 15 minutos), sin importar si el informe
+diario ya se envio hoy, para que la grafica este siempre actualizada.
 
 Este archivo es el que se ejecuta automaticamente todos los dias
 mediante GitHub Actions (o el Programador de Tareas de Windows).
@@ -62,6 +65,24 @@ def ejecutar_proceso_diario():
         revisar_y_enviar_alerta_ecopetrol()
     except Exception as error:
         print("ERROR revisando convocatorias de Ecopetrol: " + str(error))
+
+    # ---------- Generacion por Fuente ----------
+    # Se descarga siempre, en cada corrida, sin importar si el informe
+    # diario ya se envio hoy, para que la grafica este siempre al dia.
+    # Se descarga un rango de varios dias hacia atras (no solo ayer),
+    # para que si algun dia falla la descarga (por ejemplo porque el
+    # IDO aun no habia publicado, o hubo un error de red), se vuelva
+    # a intentar automaticamente en la siguiente corrida sin dejar huecos.
+    print("\n--- Descargando Generacion por Fuente ---")
+    try:
+        from generacion_por_fuente import descargar_generacion_rango
+        from datetime import timedelta
+
+        fecha_fin_gen = datetime.now() - timedelta(days=1)
+        fecha_inicio_gen = fecha_fin_gen - timedelta(days=8)
+        descargar_generacion_rango(fecha_inicio_gen, fecha_fin_gen)
+    except Exception as error:
+        print("ERROR en Generacion por Fuente: " + str(error))
 
     from base_datos import ya_se_envio_hoy, marcar_enviado_hoy
 
@@ -125,22 +146,6 @@ def ejecutar_proceso_diario():
             guardar_precio_escasez(fecha_escasez, valor_escasez)
     except Exception as error:
         print("ERROR en Precio de Escasez: " + str(error))
-
-    # ---------- 3.5 Generacion por Fuente ----------
-    # Se descarga un rango de varios dias hacia atras (no solo ayer),
-    # para que si algun dia falla la descarga (por ejemplo porque el
-    # IDO aun no habia publicado, o hubo un error de red), se vuelva
-    # a intentar automaticamente al dia siguiente sin dejar huecos.
-    print("\n--- PASO 3.5: Descargando Generacion por Fuente ---")
-    try:
-        from generacion_por_fuente import descargar_generacion_rango
-        from datetime import timedelta
-
-        fecha_fin_gen = datetime.now() - timedelta(days=1)
-        fecha_inicio_gen = fecha_fin_gen - timedelta(days=8)
-        descargar_generacion_rango(fecha_inicio_gen, fecha_fin_gen)
-    except Exception as error:
-        print("ERROR en Generacion por Fuente: " + str(error))
 
     # ---------- 4. Generar informe PDF (incluye los graficos) ----------
     print("\n--- PASO 4: Generando informe PDF ---")

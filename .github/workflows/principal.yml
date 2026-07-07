@@ -1,18 +1,11 @@
 name: Sistema Mercado Electrico
-# Aqui le decimos a GitHub CUANDO debe ejecutar el sistema automaticamente.
-# La hora se escribe en formato UTC (hora de Greenwich), que es 5 horas
-# mas adelante que la hora de Colombia. Por ejemplo, si queremos que
-# corra a las 7:00 AM en Colombia, hay que escribir las 12:00 UTC.
+# Este workflow ya NO se dispara con el "schedule" interno de GitHub
+# (no era confiable con intervalos cortos). Ahora se dispara desde un
+# servicio externo (cron-job.org) que llama a este workflow cada 15
+# minutos usando "workflow_dispatch".
 on:
-  schedule:
-    # Revisa cada 10 minutos si el IMAR de mañana ya esta publicado.
-    # Si ya se envio el informe hoy, o si el IMAR aun no esta listo,
-    # el programa no hace nada y espera a la siguiente revision.
-    - cron: '*/10 * * * *'
-    # Martes y jueves a las 8:00 AM hora Colombia (13:00 UTC) - Modulo 3, 4 y 5
-    - cron: '0 13 * * 2,4'
-  # Esto permite tambien ejecutarlo manualmente desde GitHub, con un boton,
-  # util para probar que todo funciona sin esperar a la hora programada.
+  # Esto permite ejecutarlo manualmente desde GitHub (boton "Run workflow"),
+  # y tambien es lo que usa el cron externo para dispararlo automaticamente.
   workflow_dispatch:
 jobs:
   ejecutar_sistema:
@@ -42,12 +35,21 @@ jobs:
       # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
       - name: Ejecutar proceso diario
         run: python main_diario.py
-      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5) -
-      # solo se ejecuta realmente los martes (dia 2) y jueves (dia 4),
-      # gracias a la condicion "if" de abajo.
+      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
+      # solo los martes y jueves, entre las 8:00 y 8:14 AM hora Colombia
+      # (13:00-13:14 UTC), para que se ejecute una sola vez ese dia, igual
+      # que antes cuando lo controlaba el "schedule" de GitHub.
       - name: Ejecutar proceso hidrologico (martes y jueves)
-        if: github.event.schedule == '0 13 * * 2,4'
-        run: python main_hidrologico.py
+        run: |
+          DIA=$(date -u +%u)
+          HORA=$(date -u +%H)
+          MINUTO=$(date -u +%M)
+          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" = "13" ] && [ "$MINUTO" -lt "15" ]; then
+            echo "Es martes o jueves entre 8:00-8:14 AM Colombia, ejecutando proceso hidrologico..."
+            python main_hidrologico.py
+          else
+            echo "No corresponde ejecutar el proceso hidrologico en este momento."
+          fi
       # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
       # Ejecutivo Quincenal (Modulo 6). Solo actua los dias 15 y el
       # ultimo dia de cada mes; cualquier otro dia no hace nada.

@@ -35,6 +35,13 @@ jobs:
       # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
       - name: Ejecutar proceso diario
         run: python main_diario.py
+      # Paso 5.5: PRUEBA TEMPORAL - regenera el PDF del informe diario
+      # directamente, sin pasar por la validacion de "ya se envio hoy",
+      # para poder revisar visualmente los cambios de diseno (logo,
+      # fechas en espanol, tabla del IMAR, etc.) sin esperar al dia
+      # siguiente. Quitar este paso despues de la revision.
+      - name: PRUEBA - Regenerar informe diario
+        run: python Reportes/generar_informe_diario.py
       # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
       # solo los martes y jueves, entre las 8:00 AM y las 12:00 PM
       # hora Colombia (13:00-16:59 UTC). Dentro de esa ventana, el

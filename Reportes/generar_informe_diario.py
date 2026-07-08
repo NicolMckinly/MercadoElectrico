@@ -6,8 +6,14 @@ Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
 de la especificacion del proyecto): pagina ejecutiva con indicadores,
 comentario automatico, grafico mensual, grafico anual, grafico del
 IMAR del dia siguiente periodo a periodo, tabla de estadisticas, y
-tabla del IMAR del dia siguiente (crudo y ajustado, con el periodo
-mas alto resaltado en verde y el mas bajo en amarillo).
+tabla del IMAR del dia siguiente (crudo, ajustado, Costo WCO GasTY y
+Costo GE Gas TY, con fila de promedio al final, y el periodo mas alto
+resaltado en verde y el mas bajo en amarillo).
+
+Los valores de Costo WCO GasTY y Costo GE Gas TY son ESTATICOS por
+ahora (se definen como constantes mas abajo, COSTO_WCO_GASTY y
+COSTO_GE_GASTY) y se pueden actualizar manualmente editando esos dos
+numeros cuando corresponda.
 
 El logo de la empresa se dibuja en la esquina superior derecha de
 TODAS las paginas del documento, en tamano pequeno tipo membrete.
@@ -16,9 +22,9 @@ Diseno: fuente Helvetica (la mas parecida disponible a Arial Nova
 Cond, que no esta instalada en el equipo), tamano base 12, titulos en
 negrita, todo el texto en color negro.
 
-Este archivo NO descarga datos ni hace calculos. Su unica
-responsabilidad es tomar los resultados de los otros modulos y
-armar el documento PDF final.
+Este archivo NO descarga datos ni hace calculos de mercado. Su unica
+responsabilidad es tomar los resultados de los otros modulos y armar
+el documento PDF final.
 """
 
 import sys
@@ -70,6 +76,12 @@ ANCHO_TARJETA = 4.3 * cm
 PROPORCION_LOGO = 545 / 1645  # alto / ancho
 ANCHO_LOGO = 2.2 * cm
 ALTO_LOGO = ANCHO_LOGO * PROPORCION_LOGO
+
+# Valores ESTATICOS de las columnas "Costo WCO GasTY" y "Costo GE Gas
+# TY" en la tabla del IMAR. Se actualizan manualmente cambiando estos
+# dos numeros cuando corresponda.
+COSTO_WCO_GASTY = 447.2
+COSTO_GE_GASTY = 497.9
 
 
 def _dibujar_logo_en_pagina(canvas_obj, doc):
@@ -316,11 +328,21 @@ def generar_informe_diario():
             "CeldaEncabezadoImar", fontSize=9, textColor=colors.white,
             fontName="Helvetica-Bold", leading=12, alignment=TA_CENTER
         )
+        estilo_celda_promedio_texto = ParagraphStyle(
+            "CeldaPromedioTexto", fontSize=9, textColor=colors.white,
+            fontName="Helvetica-Bold", leading=12
+        )
+        estilo_celda_promedio_numero = ParagraphStyle(
+            "CeldaPromedioNumero", fontSize=9, textColor=colors.white,
+            fontName="Helvetica-Bold", leading=12, alignment=TA_CENTER
+        )
 
         datos_tabla_imar = [[
             Paragraph("Periodo", estilo_celda_encabezado_imar),
             Paragraph("IMAR", estilo_celda_encabezado_imar),
-            Paragraph("IMAR Ajustado", estilo_celda_encabezado_imar)
+            Paragraph("IMAR Ajustado", estilo_celda_encabezado_imar),
+            Paragraph("Costo WCO GasTY", estilo_celda_encabezado_imar),
+            Paragraph("Costo GE Gas TY", estilo_celda_encabezado_imar)
         ]]
 
         for fila_imar in tabla_imar["filas"]:
@@ -328,16 +350,35 @@ def generar_informe_diario():
                 Paragraph(fila_imar["periodo"], estilo_celda_periodo),
                 Paragraph("{:.1f}".format(fila_imar["imar_crudo"]), estilo_celda_numero),
                 Paragraph("{:.1f}".format(fila_imar["imar_ajustado"]), estilo_celda_numero),
+                Paragraph("{:.1f}".format(COSTO_WCO_GASTY), estilo_celda_numero),
+                Paragraph("{:.1f}".format(COSTO_GE_GASTY), estilo_celda_numero),
             ])
 
+        valores_crudos = [f["imar_crudo"] for f in tabla_imar["filas"]]
         valores_ajustados = [f["imar_ajustado"] for f in tabla_imar["filas"]]
         indice_del_maximo = valores_ajustados.index(max(valores_ajustados)) + 1
         indice_del_minimo = valores_ajustados.index(min(valores_ajustados)) + 1
 
-        tabla_imar_pdf = Table(datos_tabla_imar, colWidths=[7 * cm, 4 * cm, 4 * cm], repeatRows=1)
+        promedio_crudo = sum(valores_crudos) / len(valores_crudos)
+        promedio_ajustado = sum(valores_ajustados) / len(valores_ajustados)
+
+        indice_fila_promedio = len(datos_tabla_imar)
+        datos_tabla_imar.append([
+            Paragraph("PROMEDIO", estilo_celda_promedio_texto),
+            Paragraph("{:.1f}".format(promedio_crudo), estilo_celda_promedio_numero),
+            Paragraph("{:.1f}".format(promedio_ajustado), estilo_celda_promedio_numero),
+            Paragraph("{:.1f}".format(COSTO_WCO_GASTY), estilo_celda_promedio_numero),
+            Paragraph("{:.1f}".format(COSTO_GE_GASTY), estilo_celda_promedio_numero),
+        ])
+
+        tabla_imar_pdf = Table(
+            datos_tabla_imar,
+            colWidths=[4.4 * cm, 2.4 * cm, 2.9 * cm, 2.9 * cm, 2.9 * cm],
+            repeatRows=1
+        )
         tabla_imar_pdf.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), COLOR_FONDO_ENCABEZADO_TABLA),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, COLOR_FONDO_TARJETA]),
+            ("ROWBACKGROUNDS", (0, 1), (-1, indice_fila_promedio - 1), [colors.white, COLOR_FONDO_TARJETA]),
             ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDE),
             ("TOPPADDING", (0, 0), (-1, -1), 4),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
@@ -345,6 +386,7 @@ def generar_informe_diario():
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("BACKGROUND", (0, indice_del_maximo), (-1, indice_del_maximo), COLOR_RESALTADO_ALTO),
             ("BACKGROUND", (0, indice_del_minimo), (-1, indice_del_minimo), COLOR_RESALTADO_BAJO),
+            ("BACKGROUND", (0, indice_fila_promedio), (-1, indice_fila_promedio), COLOR_FONDO_ENCABEZADO_TABLA),
         ]))
         elementos.append(tabla_imar_pdf)
     else:

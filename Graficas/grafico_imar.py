@@ -40,7 +40,10 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
         print("No hay datos de IMAR disponibles para graficar todavia.")
         return None
 
-    periodos = [f["periodo"] for f in tabla_imar["filas"]]
+    cantidad_periodos = len(tabla_imar["filas"])
+    # Etiquetas cortas tipo P01, P02, ... P24, en vez de la hora completa.
+    periodos = ["P" + str(indice + 1).zfill(2) for indice in range(cantidad_periodos)]
+
     valores_crudo = [f["imar_crudo"] for f in tabla_imar["filas"]]
     valores_ajustado = [f["imar_ajustado"] for f in tabla_imar["filas"]]
 
@@ -57,11 +60,13 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
     ejes.set_ylabel("$/kWh")
     ejes.set_xlabel("Periodo")
     ejes.set_xticks(posiciones)
-    ejes.set_xticklabels(periodos, rotation=90, fontsize=8)
+    ejes.set_xticklabels(periodos, rotation=0, fontsize=8)
     ejes.grid(True, linestyle="--", alpha=0.3)
-    ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=2, frameon=False)
+    ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2, frameon=False)
 
-    figura.tight_layout()
+    # Mas espacio abajo para que la leyenda no se encime con las
+    # etiquetas del eje X (que ahora son cortas, pero por seguridad).
+    figura.subplots_adjust(bottom=0.22)
 
     ruta = os.path.join(CARPETA_ACTUAL, "imar_siguiente_dia.png")
     figura.savefig(ruta, dpi=150)

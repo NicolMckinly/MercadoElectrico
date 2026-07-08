@@ -13,6 +13,11 @@ Tambien muestra el Precio de Escasez que estuvo vigente en cada mes
 especifico (ya que este valor cambia mes a mes), con su etiqueta de
 dato correspondiente.
 
+Los nombres de los meses en el eje X se traducen manualmente al
+espanol, porque el servidor donde corre el sistema (GitHub Actions)
+no tiene instalado el idioma espanol, y usar DateFormatter("%b")
+directamente mostraria el mes en ingles (Jan, Feb, Mar...).
+
 Este grafico se actualiza automaticamente cada vez que se ejecuta,
 tomando todo lo que exista en la base de datos hasta ese momento
 (no hay que hacer nada especial para "actualizarlo").
@@ -26,6 +31,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import FuncFormatter
 from datetime import datetime
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,6 +46,21 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 COLOR_DIARIO = "#8FB8DE"       # azul claro, para la linea de fondo dia a dia
 COLOR_MENSUAL = "#1F4E79"      # azul oscuro, para el resumen mensual
 COLOR_ESCASEZ = "#B22222"      # rojo, para el Precio de Escasez
+
+MESES_ABREVIADOS_ESPANOL = {
+    1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+    7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+}
+
+
+def _formatear_mes_en_espanol(valor_x, posicion=None):
+    """
+    Formateador personalizado para el eje X: convierte la fecha
+    numerica interna de matplotlib en el nombre abreviado del mes,
+    en espanol (Ene, Feb, Mar...).
+    """
+    fecha = mdates.num2date(valor_x)
+    return MESES_ABREVIADOS_ESPANOL[fecha.month]
 
 
 def _valor_escasez_vigente_en_el_mes(historico_escasez, anio, mes):
@@ -157,7 +178,7 @@ def generar_grafico_anual():
         ejes.plot(
             fechas_mensuales, valores_escasez,
             "o:", color=COLOR_ESCASEZ, linewidth=2, markersize=6,
-            label="Precio de Escasez vigente ese mes"
+            label="Precio de Escasez"
         )
 
         for fecha_x, valor in zip(fechas_mensuales, valores_escasez):
@@ -177,7 +198,7 @@ def generar_grafico_anual():
     ejes.set_ylabel("Precio ($/kWh)")
     ejes.set_xlabel("Mes")
 
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_mes_en_espanol))
     ejes.xaxis.set_major_locator(mdates.MonthLocator())
 
     ejes.grid(True, linestyle="--", alpha=0.4)

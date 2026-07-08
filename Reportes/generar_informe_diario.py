@@ -4,9 +4,10 @@ Ubicacion: Reportes/generar_informe_diario.py
 
 Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
 de la especificacion del proyecto): pagina ejecutiva con indicadores,
-comentario automatico, grafico mensual, grafico anual, tabla de
-estadisticas, y tabla del IMAR del dia siguiente (crudo y ajustado,
-con el periodo mas alto resaltado en verde y el mas bajo en amarillo).
+comentario automatico, grafico mensual, grafico anual, grafico del
+IMAR del dia siguiente periodo a periodo, tabla de estadisticas, y
+tabla del IMAR del dia siguiente (crudo y ajustado, con el periodo
+mas alto resaltado en verde y el mas bajo en amarillo).
 
 Diseno: fuente Helvetica (la mas parecida disponible a Arial Nova
 Cond, que no esta instalada en el equipo), tamano base 12, titulos en
@@ -38,6 +39,7 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 from estadisticas_precio import calcular_estadisticas, generar_comentario_automatico
 from grafico_mensual import generar_grafico_mensual
 from grafico_anual import generar_grafico_anual
+from grafico_imar import generar_grafico_imar_siguiente_dia
 from tabla_imar_siguiente_dia import obtener_tabla_imar_siguiente_dia
 from base_datos import consultar_precio_escasez_mas_reciente
 
@@ -109,6 +111,7 @@ def generar_informe_diario():
     ruta_grafico_mensual = generar_grafico_mensual()
     ruta_grafico_anual = generar_grafico_anual()
     tabla_imar = obtener_tabla_imar_siguiente_dia()
+    ruta_grafico_imar = generar_grafico_imar_siguiente_dia(tabla_imar)
     _, valor_escasez = consultar_precio_escasez_mas_reciente()
 
     hoy = datetime.now()
@@ -251,6 +254,13 @@ def generar_informe_diario():
     else:
         elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
 
+    elementos.append(Spacer(1, 10))
+    elementos.append(Paragraph("IMAR del Dia Siguiente - Grafico por Periodo", estilo_seccion))
+    if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
+        elementos.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (5.5 / 11)))
+    else:
+        elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado, no hay grafico disponible.", estilo_cuerpo))
+
     elementos.append(PageBreak())
     elementos.append(Paragraph("IMAR del Dia Siguiente - Periodo a Periodo", estilo_seccion))
 
@@ -294,25 +304,4 @@ def generar_informe_diario():
 
         tabla_imar_pdf = Table(datos_tabla_imar, colWidths=[7 * cm, 4 * cm, 4 * cm], repeatRows=1)
         tabla_imar_pdf.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), COLOR_FONDO_ENCABEZADO_TABLA),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, COLOR_FONDO_TARJETA]),
-            ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("BACKGROUND", (0, indice_del_maximo), (-1, indice_del_maximo), COLOR_RESALTADO_ALTO),
-            ("BACKGROUND", (0, indice_del_minimo), (-1, indice_del_minimo), COLOR_RESALTADO_BAJO),
-        ]))
-        elementos.append(tabla_imar_pdf)
-    else:
-        elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado por XM.", estilo_cuerpo))
-
-    documento.build(elementos)
-
-    print("Informe generado: " + ruta_pdf)
-    return ruta_pdf
-
-
-if __name__ == "__main__":
-    generar_informe_diario()
+            ("BACKGROUND", (0, 0),

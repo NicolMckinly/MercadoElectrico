@@ -52,7 +52,7 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
     figura, ejes = plt.subplots(figsize=(11, 5.5))
 
     ejes.plot(posiciones, valores_crudo, marker="o", markersize=4,
-              linewidth=2, label="IMAR Crudo", color=COLOR_IMAR_CRUDO)
+              linewidth=2, label="IMAR", color=COLOR_IMAR_CRUDO)
     ejes.plot(posiciones, valores_ajustado, marker="o", markersize=4,
               linewidth=2, label="IMAR Ajustado", color=COLOR_IMAR_AJUSTADO)
 

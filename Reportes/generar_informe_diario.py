@@ -9,6 +9,9 @@ IMAR del dia siguiente periodo a periodo, tabla de estadisticas, y
 tabla del IMAR del dia siguiente (crudo y ajustado, con el periodo
 mas alto resaltado en verde y el mas bajo en amarillo).
 
+El logo de la empresa se dibuja en la esquina superior derecha de
+TODAS las paginas del documento, en tamano pequeno tipo membrete.
+
 Diseno: fuente Helvetica (la mas parecida disponible a Arial Nova
 Cond, que no esta instalada en el equipo), tamano base 12, titulos en
 negrita, todo el texto en color negro.
@@ -44,6 +47,7 @@ from tabla_imar_siguiente_dia import obtener_tabla_imar_siguiente_dia
 from base_datos import consultar_precio_escasez_mas_reciente
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
+RUTA_LOGO = os.path.join(CARPETA_ACTUAL, "logo_termomorro.png")
 
 COLOR_TEXTO = colors.black
 COLOR_FONDO_ENCABEZADO_TABLA = colors.HexColor("#333333")
@@ -59,6 +63,34 @@ COLOR_ACENTO_PROMEDIO = colors.HexColor("#D9822B")
 
 TAMANO_FUENTE_BASE = 12
 ANCHO_TARJETA = 4.3 * cm
+
+# Proporcion real del archivo del logo (ancho x alto en pixeles),
+# para dibujarlo siempre con las proporciones correctas y que no se
+# vea deformado.
+PROPORCION_LOGO = 545 / 1645  # alto / ancho
+ANCHO_LOGO = 2.2 * cm
+ALTO_LOGO = ANCHO_LOGO * PROPORCION_LOGO
+
+
+def _dibujar_logo_en_pagina(canvas_obj, doc):
+    """
+    Dibuja el logo de la empresa, pequeno tipo membrete, en la esquina
+    superior derecha de la pagina. Se usa como callback "onPage" de
+    SimpleDocTemplate, asi que ReportLab lo llama automaticamente en
+    CADA pagina del PDF (primera y siguientes).
+    """
+    if not os.path.exists(RUTA_LOGO):
+        return
+
+    ancho_pagina, alto_pagina = doc.pagesize
+    x = ancho_pagina - doc.rightMargin - ANCHO_LOGO
+    y = alto_pagina - 1.0 * cm - ALTO_LOGO
+
+    canvas_obj.drawImage(
+        RUTA_LOGO, x, y,
+        width=ANCHO_LOGO, height=ALTO_LOGO,
+        preserveAspectRatio=True, mask="auto"
+    )
 
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
@@ -121,7 +153,7 @@ def generar_informe_diario():
     documento = SimpleDocTemplate(
         ruta_pdf,
         pagesize=letter,
-        topMargin=1.5 * cm,
+        topMargin=2.6 * cm,
         bottomMargin=1.5 * cm,
         leftMargin=1.5 * cm,
         rightMargin=1.5 * cm
@@ -304,4 +336,29 @@ def generar_informe_diario():
 
         tabla_imar_pdf = Table(datos_tabla_imar, colWidths=[7 * cm, 4 * cm, 4 * cm], repeatRows=1)
         tabla_imar_pdf.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0),
+            ("BACKGROUND", (0, 0), (-1, 0), COLOR_FONDO_ENCABEZADO_TABLA),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, COLOR_FONDO_TARJETA]),
+            ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDE),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, indice_del_maximo), (-1, indice_del_maximo), COLOR_RESALTADO_ALTO),
+            ("BACKGROUND", (0, indice_del_minimo), (-1, indice_del_minimo), COLOR_RESALTADO_BAJO),
+        ]))
+        elementos.append(tabla_imar_pdf)
+    else:
+        elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado por XM.", estilo_cuerpo))
+
+    documento.build(
+        elementos,
+        onFirstPage=_dibujar_logo_en_pagina,
+        onLaterPages=_dibujar_logo_en_pagina
+    )
+
+    print("Informe generado: " + ruta_pdf)
+    return ruta_pdf
+
+
+if __name__ == "__main__":
+    generar_informe_diario()

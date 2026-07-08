@@ -18,9 +18,10 @@ numeros cuando corresponda.
 El logo de la empresa se dibuja en la esquina superior derecha de
 TODAS las paginas del documento, en tamano pequeno tipo membrete.
 
-Diseno: fuente Helvetica (la mas parecida disponible a Arial Nova
-Cond, que no esta instalada en el equipo), tamano base 12, titulos en
-negrita, todo el texto en color negro.
+La fecha del titulo se muestra en espanol (usando el diccionario
+MESES_EN_ESPANOL_LARGO), porque el servidor donde corre el sistema
+(GitHub Actions) no tiene instalado el idioma espanol, y usar
+strftime("%B") directamente mostraria el mes en ingles.
 
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
@@ -82,6 +83,12 @@ ALTO_LOGO = ANCHO_LOGO * PROPORCION_LOGO
 # dos numeros cuando corresponda.
 COSTO_WCO_GASTY = 447.2
 COSTO_GE_GASTY = 497.9
+
+MESES_EN_ESPANOL_LARGO = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
 
 
 def _dibujar_logo_en_pagina(canvas_obj, doc):
@@ -202,7 +209,9 @@ def generar_informe_diario():
     elementos = []
 
     elementos.append(Paragraph("Informe Diario - Precio de Bolsa Nacional", estilo_titulo_principal))
-    elementos.append(Paragraph(hoy.strftime("%d de %B de %Y"), estilo_subtitulo))
+
+    fecha_en_espanol = hoy.strftime("%d") + " de " + MESES_EN_ESPANOL_LARGO[hoy.month] + " de " + str(hoy.year)
+    elementos.append(Paragraph(fecha_en_espanol, estilo_subtitulo))
 
     tarjeta_precio = _crear_tarjeta_kpi(
         "Precio Bolsa Actual (" + estadisticas["fuente_dia_mas_reciente"] + ")",

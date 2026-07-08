@@ -11,6 +11,11 @@ linea solida. Los dias que vienen del IMAR (porque el precio real
 aun no ha sido publicado) se muestran con una linea punteada y en
 un color distinto, para dejar claro que es un dato provisional.
 
+Los nombres de los meses se traducen manualmente al espanol, porque
+el servidor donde corre el sistema (GitHub Actions) no tiene
+instalado el idioma espanol, y usar strftime("%B") directamente
+mostraria el mes en ingles.
+
 El grafico se guarda como una imagen .png dentro de esta misma carpeta.
 """
 
@@ -34,6 +39,12 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 COLOR_PRECIO_REAL = "#1F4E79"   # azul oscuro
 COLOR_IMAR = "#D9822B"          # naranja
 COLOR_ESCASEZ = "#B22222"       # rojo ladrillo
+
+MESES_EN_ESPANOL = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
 
 
 def generar_grafico_mensual():
@@ -81,7 +92,7 @@ def generar_grafico_mensual():
     ejes.plot(
         dias_imar["fecha_dt"], dias_imar["promedio_diario"],
         "o--", color=COLOR_IMAR, linewidth=2.5, markersize=6,
-        label="IMAR (provisional, aun sin publicar)", zorder=2
+        label="IMAR", zorder=2
     )
 
     # Etiqueta de dato en cada punto, mostrando el precio promedio del dia
@@ -98,7 +109,7 @@ def generar_grafico_mensual():
             fontweight="bold"
         )
 
-    nombre_mes = hoy.strftime("%B %Y").capitalize()
+    nombre_mes = MESES_EN_ESPANOL[hoy.month] + " " + str(hoy.year)
 
     # Linea horizontal de referencia con el Precio de Escasez vigente del mes
     fecha_escasez, valor_escasez = consultar_precio_escasez_mas_reciente()

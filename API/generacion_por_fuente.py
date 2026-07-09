@@ -20,6 +20,11 @@ proyecto:
 - Solar y Eolica: Generacion Solar + Menores Solar + Menores Eolica
 - Autogen. y Cogen. y Gen. Distribuida: Autogeneracion + Cogenerador
   + Generacion Distribuida
+
+El bloque __main__ usa ahora_colombia() (ver BaseDatos/zona_horaria.py)
+en vez de datetime.now(), para que el rango de fechas siempre se
+calcule con la hora real de Colombia y no con la hora UTC del
+servidor.
 """
 
 import requests
@@ -27,7 +32,7 @@ import time
 import sys
 import os
 import urllib3
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 # El servidor del IDO de XM tiene un problema de configuracion en su
 # certificado de seguridad (le falta un certificado intermedio en la
@@ -42,6 +47,7 @@ CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from base_datos import guardar_generacion_por_fuente
+from zona_horaria import ahora_colombia
 
 URL_IDO = "https://ido.xm.com.co/ArchivoIdo/ObtenerArchivosPorDia"
 ENCABEZADOS = {
@@ -171,7 +177,7 @@ def descargar_generacion_rango(fecha_inicio, fecha_fin):
 if __name__ == "__main__":
     # El IDO publica con muy poco rezago (normalmente el dia
     # siguiente a las 6:00 AM), asi que usamos un margen de solo 1 dia.
-    fecha_fin = datetime.now() - timedelta(days=1)
+    fecha_fin = ahora_colombia() - timedelta(days=1)
     fecha_inicio = fecha_fin - timedelta(days=9)
 
     print("Descargando generacion por fuente (IDO) desde " + str(fecha_inicio.date()) + " hasta " + str(fecha_fin.date()))

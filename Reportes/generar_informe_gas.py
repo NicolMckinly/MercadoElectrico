@@ -6,12 +6,17 @@ Genera el Informe del Mercado de Gas en PDF, con la tabla de
 convocatorias/contratos detectados y el grafico de tendencia de
 cantidades ofertadas (MBTUD).
 
-Este informe se envia junto con el Resumen Ejecutivo Quincenal.
+Este informe se genera y envia especificamente cuando se detecta una
+convocatoria NUEVA de Ecopetrol (ver Correos/enviar_alerta_ecopetrol.py),
+no junto con el Resumen Ejecutivo Quincenal.
+
+Usa ahora_colombia() (ver BaseDatos/zona_horaria.py) en vez de
+datetime.now(), para que la fecha del nombre del archivo y del
+subtitulo siempre correspondan a la hora real de Colombia.
 """
 
 import sys
 import os
-from datetime import datetime
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
@@ -24,9 +29,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
+sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from estadisticas_gas import obtener_historico_gas
 from grafico_gas import generar_grafico_gas
+from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,6 +41,12 @@ COLOR_TEXTO = colors.black
 COLOR_FONDO_ENCABEZADO_TABLA = colors.HexColor("#333333")
 COLOR_FONDO_TARJETA = colors.HexColor("#F7F7F7")
 COLOR_BORDE = colors.HexColor("#DDDDDD")
+
+MESES_EN_ESPANOL_LARGO = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
 
 
 def generar_informe_gas():
@@ -45,7 +58,7 @@ def generar_informe_gas():
     """
     historico = obtener_historico_gas()
 
-    hoy = datetime.now()
+    hoy = ahora_colombia()
     nombre_archivo = "Informe_Mercado_Gas_" + hoy.strftime("%Y_%m_%d") + ".pdf"
     ruta_pdf = os.path.join(CARPETA_ACTUAL, nombre_archivo)
 
@@ -82,7 +95,9 @@ def generar_informe_gas():
     elementos = []
 
     elementos.append(Paragraph("Informe del Mercado de Gas Natural", estilo_titulo_principal))
-    elementos.append(Paragraph("Convocatorias de Ecopetrol - " + hoy.strftime("%d de %B de %Y"), estilo_subtitulo))
+
+    fecha_en_espanol = hoy.strftime("%d") + " de " + MESES_EN_ESPANOL_LARGO[hoy.month] + " de " + str(hoy.year)
+    elementos.append(Paragraph("Convocatorias de Ecopetrol - " + fecha_en_espanol, estilo_subtitulo))
 
     elementos.append(Paragraph("Tendencia de Cantidades Ofertadas", estilo_seccion))
     ruta_grafico = generar_grafico_gas()

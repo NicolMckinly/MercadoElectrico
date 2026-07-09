@@ -16,6 +16,11 @@ el servidor donde corre el sistema (GitHub Actions) no tiene
 instalado el idioma espanol, y usar strftime("%B") directamente
 mostraria el mes en ingles.
 
+La fecha de "hoy" se calcula con ahora_colombia() (ver
+BaseDatos/zona_horaria.py) en vez de datetime.now(), para que el
+sistema siempre use la hora real de Colombia y no la hora UTC del
+servidor (que va 5 horas adelante).
+
 El grafico se guarda como una imagen .png dentro de esta misma carpeta.
 """
 
@@ -29,9 +34,11 @@ from datetime import datetime, timedelta
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
+sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from combinar_precio import obtener_serie_combinada, COLUMNAS_HORA
 from base_datos import consultar_precio_escasez_mas_reciente
+from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
@@ -54,7 +61,7 @@ def generar_grafico_mensual():
     Retorna:
         La ruta del archivo de imagen generado.
     """
-    hoy = datetime.now()
+    hoy = ahora_colombia()
     primer_dia_del_mes = hoy.replace(day=1).strftime("%Y-%m-%d")
     # Incluimos tambien el dia de MANANA, ya que el IMAR normalmente
     # ya esta publicado con un dia de anticipacion.
@@ -119,7 +126,7 @@ def generar_grafico_mensual():
             color=COLOR_ESCASEZ,
             linestyle=":",
             linewidth=2,
-            label="Precio de Escasez vigente"
+            label="Precio de Escasez"
         )
 
         # Etiqueta con el valor exacto, ubicada sobre el primer dia del grafico

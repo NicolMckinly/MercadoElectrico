@@ -9,6 +9,13 @@ Usamos SQLite: una base de datos que vive en un solo archivo dentro
 de esta misma carpeta, sin necesidad de instalar ningun programa
 adicional. Python ya trae todo lo necesario para usarla.
 
+Las funciones que necesitan la fecha de "hoy" (ya_se_envio_hoy,
+marcar_enviado_hoy, dias_desde_ultimo_envio, guardar_convocatoria_vista,
+guardar_noticias, consultar_noticias_recientes) usan ahora_colombia()
+(ver zona_horaria.py) en vez de datetime.now(), para que el sistema
+siempre use la hora real de Colombia y no la hora UTC del servidor
+(que va 5 horas adelante).
+
 Este archivo NO descarga datos de XM ni hace analisis.
 Su unica responsabilidad es guardar y leer informacion.
 """
@@ -17,6 +24,8 @@ import sqlite3
 import pandas as pd
 import os
 from datetime import datetime, timedelta
+
+from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 RUTA_BASE_DATOS = os.path.join(CARPETA_ACTUAL, "mercado_electrico.db")
@@ -537,8 +546,8 @@ def consultar_fecha_mas_reciente_generacion():
 def ya_se_envio_hoy(nombre_proceso):
     """
     Revisa si un proceso especifico (por ejemplo, "diario" o
-    "hidrologico") ya se ejecuto/envio el dia de hoy, para evitar
-    enviar el mismo informe mas de una vez.
+    "hidrologico") ya se ejecuto/envio el dia de hoy (hora Colombia),
+    para evitar enviar el mismo informe mas de una vez.
 
     Parametros:
         nombre_proceso (str): identificador del proceso, ej. "diario".
@@ -548,7 +557,7 @@ def ya_se_envio_hoy(nombre_proceso):
     """
     crear_tablas()
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = ahora_colombia().strftime("%Y-%m-%d")
 
     conexion = obtener_conexion()
     cursor = conexion.cursor()
@@ -564,11 +573,12 @@ def ya_se_envio_hoy(nombre_proceso):
 
 def marcar_enviado_hoy(nombre_proceso):
     """
-    Registra que un proceso especifico ya se envio el dia de hoy.
+    Registra que un proceso especifico ya se envio el dia de hoy
+    (hora Colombia).
     """
     crear_tablas()
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = ahora_colombia().strftime("%Y-%m-%d")
 
     conexion = obtener_conexion()
     cursor = conexion.cursor()
@@ -586,8 +596,9 @@ def marcar_enviado_hoy(nombre_proceso):
 def dias_desde_ultimo_envio(nombre_proceso):
     """
     Calcula cuantos dias han pasado desde la ultima vez que se envio
-    un proceso especifico. Util para procesos periodicos que no son
-    diarios (por ejemplo, cada 15 dias).
+    un proceso especifico (usando la fecha actual de Colombia). Util
+    para procesos periodicos que no son diarios (por ejemplo, cada
+    15 dias).
 
     Retorna:
         Un numero entero de dias, o None si el proceso nunca se ha
@@ -608,7 +619,8 @@ def dias_desde_ultimo_envio(nombre_proceso):
         return None
 
     fecha_ultimo_envio = datetime.strptime(resultado[0], "%Y-%m-%d")
-    dias_transcurridos = (datetime.now() - fecha_ultimo_envio).days
+    hoy_sin_zona = ahora_colombia().replace(tzinfo=None)
+    dias_transcurridos = (hoy_sin_zona - fecha_ultimo_envio).days
     return dias_transcurridos
 
 
@@ -646,7 +658,7 @@ def guardar_convocatoria_vista(identificador, convocatoria):
     """
     crear_tablas()
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
+    hoy = ahora_colombia().strftime("%Y-%m-%d")
 
     conexion = obtener_conexion()
     cursor = conexion.cursor()
@@ -703,7 +715,7 @@ def guardar_noticias(lista_noticias):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
 
-    fecha_busqueda = datetime.now().strftime("%Y-%m-%d")
+    fecha_busqueda = ahora_colombia().strftime("%Y-%m-%d")
 
     for noticia in lista_noticias:
         cursor.execute("""
@@ -727,7 +739,8 @@ def consultar_noticias_recientes(dias=7):
     """
     crear_tablas()
 
-    fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+    hoy_sin_zona = ahora_colombia().replace(tzinfo=None)
+    fecha_limite = (hoy_sin_zona - timedelta(days=dias)).strftime("%Y-%m-%d")
 
     conexion = obtener_conexion()
     df = pd.read_sql_query(

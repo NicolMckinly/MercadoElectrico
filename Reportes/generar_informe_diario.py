@@ -29,9 +29,15 @@ mostrada en el titulo siempre correspondan a la hora real de Colombia
 y no a la hora UTC del servidor (que va 5 horas adelante).
 
 Diseno compacto: tarjetas KPI mas bajas, tamanos de fuente mas
-uniformes cerca de 12pt, y menos espaciado entre secciones, para que
-el documento ocupe menos paginas (el grafico del IMAR alcanza a
-quedar en la misma pagina que la tendencia anual).
+uniformes cerca de 12pt, y menos espaciado entre secciones. Cada
+titulo de seccion con grafico va envuelto en KeepTogether junto con
+su imagen, para que el titulo nunca quede "huerfano" al final de una
+pagina con la imagen saltando a la siguiente.
+
+El grafico del IMAR se muestra un poco mas grande que los demas
+(usa una proporcion de aspecto mas alta, 6.5/11 en vez de 5.5/11),
+ya que su propio titulo ya incluye la fecha y no necesita un
+encabezado de seccion tan alto encima.
 
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
@@ -263,11 +269,13 @@ def generar_informe_diario():
     elementos.append(Paragraph(comentario, estilo_cuerpo))
     elementos.append(Spacer(1, 6))
 
-    elementos.append(Paragraph("Evolucion del Precio - Mes Vigente", estilo_seccion))
+    # ---------- Grafico mensual (titulo + imagen agrupados) ----------
+    seccion_mensual = [Paragraph("Evolucion del Precio - Mes Vigente", estilo_seccion)]
     if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
-        elementos.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_mensual.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+        seccion_mensual.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_mensual))
 
     elementos.append(Spacer(1, 4))
 
@@ -316,18 +324,27 @@ def generar_informe_diario():
     elementos.append(KeepTogether(seccion_estadisticas))
 
     elementos.append(Spacer(1, 4))
-    elementos.append(Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion))
+
+    # ---------- Grafico anual (titulo + imagen agrupados, para que el
+    # titulo nunca quede solo al final de una pagina) ----------
+    seccion_anual = [Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion)]
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
-        elementos.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_anual.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
+        seccion_anual.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_anual))
 
     elementos.append(Spacer(1, 4))
-    elementos.append(Paragraph("IMAR del Dia Siguiente - Grafico por Periodo", estilo_seccion))
+
+    # ---------- Grafico del IMAR (mas grande, con su titulo agrupado).
+    # Su propio titulo interno ya incluye la fecha (ej. "IMAR 09 Julio
+    # 2026"), asi que el encabezado de seccion aqui es mas breve.
+    seccion_imar = [Paragraph("IMAR del Dia Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
-        elementos.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_imar.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (6.5 / 11)))
     else:
-        elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado, no hay grafico disponible.", estilo_cuerpo))
+        seccion_imar.append(Paragraph("El IMAR del dia siguiente aun no esta publicado, no hay grafico disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_imar))
 
     elementos.append(PageBreak())
     elementos.append(Paragraph("IMAR del Dia Siguiente - Periodo a Periodo", estilo_seccion))

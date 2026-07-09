@@ -28,6 +28,11 @@ en vez de datetime.now(), para que el nombre del archivo y la fecha
 mostrada en el titulo siempre correspondan a la hora real de Colombia
 y no a la hora UTC del servidor (que va 5 horas adelante).
 
+La tabla de "Estadisticas Detalladas" se hizo mas compacta (fuente y
+padding reducidos) y se envuelve en KeepTogether, para que no se
+corte a la mitad entre dos paginas y el grafico del IMAR alcance a
+quedar en la misma pagina que la tendencia anual.
+
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
 el documento PDF final.
@@ -40,7 +45,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, KeepTogether
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
@@ -263,21 +268,28 @@ def generar_informe_diario():
     else:
         elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
 
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 6))
 
-    elementos.append(Paragraph("Estadisticas Detalladas", estilo_seccion))
+    # ---------- Tabla de Estadisticas Detalladas (version compacta) ----------
+    # Fuente y padding reducidos, y envuelta en KeepTogether, para que
+    # no se corte a la mitad entre dos paginas y ocupe menos espacio
+    # vertical (asi el grafico del IMAR alcanza a quedar en la misma
+    # pagina que la tendencia anual).
+
+    seccion_estadisticas = []
+    seccion_estadisticas.append(Paragraph("Estadisticas Detalladas", estilo_seccion))
 
     estilo_celda_indicador = ParagraphStyle(
-        "CeldaIndicador", fontSize=TAMANO_FUENTE_BASE - 2, textColor=COLOR_TEXTO,
-        fontName="Helvetica-Bold", leading=14
+        "CeldaIndicador", fontSize=9, textColor=COLOR_TEXTO,
+        fontName="Helvetica-Bold", leading=11
     )
     estilo_celda_valor = ParagraphStyle(
-        "CeldaValor", fontSize=TAMANO_FUENTE_BASE - 2, textColor=COLOR_TEXTO,
-        fontName="Helvetica", leading=14
+        "CeldaValor", fontSize=9, textColor=COLOR_TEXTO,
+        fontName="Helvetica", leading=11
     )
     estilo_celda_encabezado = ParagraphStyle(
-        "CeldaEncabezado", fontSize=TAMANO_FUENTE_BASE - 2, textColor=colors.white,
-        fontName="Helvetica-Bold", leading=14
+        "CeldaEncabezado", fontSize=9, textColor=colors.white,
+        fontName="Helvetica-Bold", leading=11
     )
 
     def fila(indicador, valor):
@@ -298,21 +310,23 @@ def generar_informe_diario():
         ("BACKGROUND", (0, 0), (-1, 0), COLOR_FONDO_ENCABEZADO_TABLA),
         ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, COLOR_FONDO_TARJETA]),
         ("GRID", (0, 0), (-1, -1), 0.5, COLOR_BORDE),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("LEFTPADDING", (0, 0), (-1, -1), 8),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
-    elementos.append(tabla_estadisticas)
+    seccion_estadisticas.append(tabla_estadisticas)
 
-    elementos.append(Spacer(1, 10))
+    elementos.append(KeepTogether(seccion_estadisticas))
+
+    elementos.append(Spacer(1, 6))
     elementos.append(Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion))
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         elementos.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
         elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
 
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 6))
     elementos.append(Paragraph("IMAR del Dia Siguiente - Grafico por Periodo", estilo_seccion))
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
         elementos.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (5.5 / 11)))

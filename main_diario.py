@@ -18,13 +18,18 @@ siempre, en cada corrida del workflow (cada 15 minutos), sin
 importar si el informe diario ya se envio hoy, para que la
 grafica este siempre actualizada.
 
+Todas las fechas se calculan usando ahora_colombia() (ver
+BaseDatos/zona_horaria.py), en vez de datetime.now(), para que el
+sistema siempre use la hora real de Colombia y no la del servidor
+(que corre en UTC).
+
 Este archivo es el que se ejecuta automaticamente todos los dias
 mediante GitHub Actions (o el Programador de Tareas de Windows).
 """
 
 import sys
 import os
-from datetime import datetime
+from datetime import timedelta
 
 CARPETA_PROYECTO = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "API"))
@@ -34,16 +39,17 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Reportes"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 
+from zona_horaria import ahora_colombia
+
 
 def ejecutar_proceso_diario():
+    hoy = ahora_colombia()
+
     print("=" * 60)
-    print("REVISANDO CONDICIONES - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("REVISANDO CONDICIONES - " + hoy.strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
     # ---------- Revisar y enviar alertas (Modulo 7) ----------
-    # Esto se revisa siempre, independientemente de si el informe
-    # diario completo ya se envio o no, para detectar eventos
-    # importantes lo antes posible.
     print("\n--- Revisando alertas ---")
     try:
         from enviar_alertas import revisar_y_enviar_alertas
@@ -68,18 +74,11 @@ def ejecutar_proceso_diario():
         print("ERROR revisando convocatorias de Ecopetrol: " + str(error))
 
     # ---------- Generacion por Fuente (datos + grafico) ----------
-    # Se descarga siempre, en cada corrida, sin importar si el informe
-    # diario ya se envio hoy, para que la grafica este siempre al dia.
-    # Se descarga un rango de varios dias hacia atras (no solo ayer),
-    # para que si algun dia falla la descarga (por ejemplo porque el
-    # IDO aun no habia publicado, o hubo un error de red), se vuelva
-    # a intentar automaticamente en la siguiente corrida sin dejar huecos.
     print("\n--- Descargando Generacion por Fuente ---")
     try:
         from generacion_por_fuente import descargar_generacion_rango
-        from datetime import timedelta
 
-        fecha_fin_gen = datetime.now() - timedelta(days=1)
+        fecha_fin_gen = hoy - timedelta(days=1)
         fecha_inicio_gen = fecha_fin_gen - timedelta(days=8)
         descargar_generacion_rango(fecha_inicio_gen, fecha_fin_gen)
     except Exception as error:
@@ -100,19 +99,18 @@ def ejecutar_proceso_diario():
         return
 
     # Condicion 2: si el IMAR de mañana aun no esta publicado por XM,
-    # esperamos (el sistema volvera a revisar en 10 minutos, segun
-    # la programacion de GitHub Actions).
+    # esperamos (el sistema volvera a revisar en el siguiente ciclo).
     from imar import verificar_imar_de_manana_publicado
 
     if not verificar_imar_de_manana_publicado():
-        print("El IMAR de mañana aun no ha sido publicado por XM. Se revisara de nuevo en 10 minutos.")
+        print("El IMAR de mañana aun no ha sido publicado por XM. Se revisara de nuevo mas tarde.")
         return
 
     print("El IMAR de mañana ya esta publicado. Procediendo con el informe diario completo.")
     print("")
 
     print("=" * 60)
-    print("INICIANDO PROCESO DIARIO - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("INICIANDO PROCESO DIARIO - " + hoy.strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
     # ---------- 1. Precio de Bolsa ----------
@@ -120,9 +118,8 @@ def ejecutar_proceso_diario():
     try:
         from precio_bolsa import obtener_precio_bolsa
         from base_datos import guardar_precio_bolsa
-        from datetime import timedelta
 
-        fecha_fin = datetime.now() - timedelta(days=1)
+        fecha_fin = hoy - timedelta(days=1)
         fecha_inicio = fecha_fin - timedelta(days=5)
         datos_bolsa = obtener_precio_bolsa(fecha_inicio, fecha_fin)
         guardar_precio_bolsa(datos_bolsa)
@@ -134,9 +131,8 @@ def ejecutar_proceso_diario():
     try:
         from imar import obtener_imar
         from base_datos import guardar_imar
-        from datetime import timedelta
 
-        fecha_fin_imar = datetime.now() + timedelta(days=1)
+        fecha_fin_imar = hoy + timedelta(days=1)
         fecha_inicio_imar = fecha_fin_imar - timedelta(days=6)
         datos_imar = obtener_imar(fecha_inicio_imar, fecha_fin_imar)
         guardar_imar(datos_imar)
@@ -182,7 +178,7 @@ def ejecutar_proceso_diario():
         print("ERROR enviando el correo: " + str(error))
 
     print("\n" + "=" * 60)
-    print("PROCESO DIARIO TERMINADO - " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    print("PROCESO DIARIO TERMINADO - " + ahora_colombia().strftime("%Y-%m-%d %H:%M:%S"))
     print("=" * 60)
 
 

@@ -20,9 +20,11 @@ jobs:
         with:
           python-version: '3.11'
       # Paso 3: Instala todas las librerias que el proyecto necesita
+      # (se agrego "holidays", para calcular los dias festivos de
+      # Colombia y ajustar el envio del Resumen Ejecutivo Quincenal).
       - name: Instalar dependencias
         run: |
-          pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl beautifulsoup4
+          pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl beautifulsoup4 holidays
       # Paso 4: Crea el archivo .env con las credenciales guardadas
       # de forma segura en los "Secrets" de GitHub (nunca quedan
       # visibles en el codigo ni en los registros de ejecucion).
@@ -52,8 +54,9 @@ jobs:
             echo "No corresponde ejecutar el proceso hidrologico en este momento."
           fi
       # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
-      # Ejecutivo Quincenal (Modulo 6). Solo actua los dias 15 y el
-      # ultimo dia de cada mes; cualquier otro dia no hace nada.
+      # Ejecutivo Quincenal (Modulo 6). Actua el dia 15 y el ultimo
+      # dia del mes, ajustados al dia habil anterior mas cercano si
+      # caen en fin de semana o festivo.
       - name: Revisar Resumen Ejecutivo Quincenal
         run: python main_ejecutivo.py
       # Paso 7: Guarda los cambios en la base de datos y los informes

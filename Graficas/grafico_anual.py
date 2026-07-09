@@ -18,6 +18,11 @@ espanol, porque el servidor donde corre el sistema (GitHub Actions)
 no tiene instalado el idioma espanol, y usar DateFormatter("%b")
 directamente mostraria el mes en ingles (Jan, Feb, Mar...).
 
+La fecha de "hoy" se calcula con ahora_colombia() (ver
+BaseDatos/zona_horaria.py) en vez de datetime.now(), para que el
+sistema siempre use la hora real de Colombia y no la hora UTC del
+servidor (que va 5 horas adelante).
+
 Este grafico se actualiza automaticamente cada vez que se ejecuta,
 tomando todo lo que exista en la base de datos hasta ese momento
 (no hay que hacer nada especial para "actualizarlo").
@@ -40,6 +45,7 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from combinar_precio import obtener_serie_combinada, COLUMNAS_HORA
 from base_datos import consultar_todo_precio_escasez
+from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
@@ -112,7 +118,7 @@ def generar_grafico_anual():
         La ruta del archivo de imagen generado, o None si no hay
         datos disponibles.
     """
-    hoy = datetime.now()
+    hoy = ahora_colombia()
     primer_dia_del_anio = hoy.replace(month=1, day=1).strftime("%Y-%m-%d")
     fecha_de_hoy = hoy.strftime("%Y-%m-%d")
 

@@ -7,10 +7,16 @@ periodo, para el dia siguiente. Se usa dentro del informe diario,
 justo despues del grafico de tendencia anual y antes de la tabla
 del IMAR, como complemento visual.
 
+El titulo del grafico incluye la fecha del dia que se esta mostrando
+(ej. "IMAR 09 Julio 2026"), traducida manualmente al espanol, porque
+el servidor donde corre el sistema (GitHub Actions) no tiene
+instalado el idioma espanol.
+
 El grafico se guarda como imagen .png dentro de esta misma carpeta.
 """
 
 import os
+from datetime import datetime
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -21,12 +27,30 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 COLOR_IMAR_CRUDO = "#7F9CC4"
 COLOR_IMAR_AJUSTADO = "#1F4E79"
 
+MESES_EN_ESPANOL_LARGO = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+    5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+    9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+}
+
+
+def _formatear_titulo_con_fecha(fecha_texto):
+    """
+    Convierte una fecha en formato "YYYY-MM-DD" en el titulo del
+    grafico, ej: "IMAR 09 Julio 2026".
+    """
+    fecha_dt = datetime.strptime(fecha_texto, "%Y-%m-%d")
+    dia = fecha_dt.strftime("%d")
+    mes = MESES_EN_ESPANOL_LARGO[fecha_dt.month]
+    anio = fecha_dt.strftime("%Y")
+    return "IMAR " + dia + " " + mes + " " + anio
+
 
 def generar_grafico_imar_siguiente_dia(tabla_imar):
     """
     Genera el grafico de linea del IMAR Crudo vs Ajustado, periodo a
     periodo, a partir del diccionario ya calculado por
-    obtener_tabla_imar_siguiente_dia() (en Reportes/tabla_imar_siguiente_dia.py).
+    obtener_tabla_imar_siguiente_dia() (en Analisis/tabla_imar_siguiente_dia.py).
 
     Parametros:
         tabla_imar (dict o None): debe tener la forma
@@ -49,14 +73,15 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
 
     posiciones = np.arange(len(periodos))
 
-    figura, ejes = plt.subplots(figsize=(11, 5.5))
+    figura, ejes = plt.subplots(figsize=(11, 6.5))
 
     ejes.plot(posiciones, valores_crudo, marker="o", markersize=4,
               linewidth=2, label="IMAR", color=COLOR_IMAR_CRUDO)
     ejes.plot(posiciones, valores_ajustado, marker="o", markersize=4,
               linewidth=2, label="IMAR Ajustado", color=COLOR_IMAR_AJUSTADO)
 
-    ejes.set_title("IMAR del dia siguiente - Periodo a periodo", fontsize=13, fontweight="bold")
+    titulo_grafico = _formatear_titulo_con_fecha(tabla_imar["fecha"])
+    ejes.set_title(titulo_grafico, fontsize=14, fontweight="bold")
     ejes.set_ylabel("$/kWh")
     ejes.set_xlabel("Periodo")
     ejes.set_xticks(posiciones)
@@ -65,8 +90,8 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2, frameon=False)
 
     # Mas espacio abajo para que la leyenda no se encime con las
-    # etiquetas del eje X (que ahora son cortas, pero por seguridad).
-    figura.subplots_adjust(bottom=0.22)
+    # etiquetas del eje X.
+    figura.subplots_adjust(bottom=0.18)
 
     ruta = os.path.join(CARPETA_ACTUAL, "imar_siguiente_dia.png")
     figura.savefig(ruta, dpi=150)
@@ -80,7 +105,7 @@ if __name__ == "__main__":
     # Prueba rapida con datos ficticios, para poder correr este
     # archivo solo y ver que el grafico se genera bien.
     tabla_prueba = {
-        "fecha": "2026-07-08",
+        "fecha": "2026-07-09",
         "filas": [
             {"periodo": "00:00-01:00", "imar_crudo": 350.0, "imar_ajustado": 360.0},
             {"periodo": "01:00-02:00", "imar_crudo": 340.0, "imar_ajustado": 345.0},

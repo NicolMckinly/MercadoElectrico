@@ -7,19 +7,29 @@ Capacidad Util, y la comparacion de Aportes con la Media Historica.
 Todas estas metricas son de tipo "DailyEntities" (un solo valor por
 dia, no 24 horas como el precio de bolsa), asi que las descargamos
 usando el mismo patron robusto: dia por dia, con reintentos.
+
+La funcion variables_hidrologicas_de_ayer_estan_publicadas() y el
+bloque __main__ usan ahora_colombia() (ver BaseDatos/zona_horaria.py)
+en vez de datetime.now(), para que "ayer" siempre se calcule con la
+hora real de Colombia y no con la hora UTC del servidor.
 """
 import requests
 import pandas as pd
 import time
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
+
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
+
 from base_datos import guardar_variable_hidrologica
+from zona_horaria import ahora_colombia
+
 URL_API_XM = "https://servapibi.xm.com.co/daily"
 MAX_INTENTOS_POR_DIA = 3
 SEGUNDOS_ENTRE_INTENTOS = 5
+
 # Cada entrada define: el codigo de la metrica en XM, y el nombre de
 # tabla donde la vamos a guardar en nuestra base de datos.
 VARIABLES_A_DESCARGAR = {
@@ -30,6 +40,8 @@ VARIABLES_A_DESCARGAR = {
     "aportes_media_historica": "AporEnerMediHist",
     "capacidad_util_energia": "CapaUtilDiarEner",
 }
+
+
 def _consultar_metrica_de_un_dia(metric_id, fecha):
     """
     Consulta el valor de una metrica diaria especifica de XM, para
@@ -59,21 +71,26 @@ def _consultar_metrica_de_un_dia(metric_id, fecha):
             print("    intento " + str(intento) + " fallo con error: " + str(error))
         time.sleep(SEGUNDOS_ENTRE_INTENTOS)
     return None
+
+
 def variables_hidrologicas_de_ayer_estan_publicadas():
     """
-    Verifica si los datos hidrologicos del dia de ayer (dia n-1) ya
-    estan publicados en la API de XM, consultando una sola metrica
-    representativa (Embalses % Volumen Util) en vez de las 6
-    completas, para que la verificacion sea rapida.
+    Verifica si los datos hidrologicos del dia de ayer (dia n-1,
+    calculado con la hora real de Colombia) ya estan publicados en
+    la API de XM, consultando una sola metrica representativa
+    (Embalses % Volumen Util) en vez de las 6 completas, para que la
+    verificacion sea rapida.
     Se usa antes de descargar todo el conjunto de variables y enviar
     el informe, para no enviar el reporte con el dia mas reciente
     todavia vacio.
     Retorna:
         True si el dato de ayer ya esta disponible, False si no.
     """
-    ayer = datetime.now() - timedelta(days=1)
+    ayer = ahora_colombia() - timedelta(days=1)
     valor = _consultar_metrica_de_un_dia("PorcVoluUtilDiar", ayer)
     return valor is not None
+
+
 def descargar_variables_hidrologicas(fecha_inicio, fecha_fin):
     """
     Descarga todas las variables hidrologicas definidas en
@@ -95,8 +112,10 @@ def descargar_variables_hidrologicas(fecha_inicio, fecha_fin):
                 print("  " + nombre_variable + ": no disponible para esta fecha.")
         guardar_variable_hidrologica(fecha_texto, valores_del_dia)
         fecha_actual = fecha_actual + timedelta(days=1)
+
+
 if __name__ == "__main__":
-    fecha_fin = datetime.now() - timedelta(days=1)
+    fecha_fin = ahora_colombia() - timedelta(days=1)
     fecha_inicio = fecha_fin - timedelta(days=5)
     print("Descargando variables hidrologicas desde " + str(fecha_inicio.date()) + " hasta " + str(fecha_fin.date()))
     print("")

@@ -14,18 +14,23 @@ el precio real como el IMAR para esa misma fecha. Esto sirve para
 identificar en que horas del dia el IMAR tiende a desviarse mas del
 precio real.
 
+"Mañana" se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
+en vez de datetime.now(), para que siempre se use la hora real de
+Colombia y no la hora UTC del servidor (que va 5 horas adelante).
+
 Este archivo NO descarga datos ni genera el PDF. Solo hace el calculo
 y entrega los resultados listos para usar.
 """
 
 import sys
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from base_datos import consultar_todo_precio_bolsa, consultar_todo_imar
+from zona_horaria import ahora_colombia
 
 COLUMNAS_HORA = [
     "hora_01", "hora_02", "hora_03", "hora_04", "hora_05", "hora_06",
@@ -110,7 +115,7 @@ def obtener_tabla_imar_siguiente_dia():
         print("No hay datos de IMAR disponibles todavia.")
         return None
 
-    manana = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    manana = (ahora_colombia() + timedelta(days=1)).strftime("%Y-%m-%d")
 
     imar_indexado = imar.set_index("fecha")
 

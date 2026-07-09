@@ -28,10 +28,10 @@ en vez de datetime.now(), para que el nombre del archivo y la fecha
 mostrada en el titulo siempre correspondan a la hora real de Colombia
 y no a la hora UTC del servidor (que va 5 horas adelante).
 
-La tabla de "Estadisticas Detalladas" se hizo mas compacta (fuente y
-padding reducidos) y se envuelve en KeepTogether, para que no se
-corte a la mitad entre dos paginas y el grafico del IMAR alcance a
-quedar en la misma pagina que la tendencia anual.
+Diseno compacto: tarjetas KPI mas bajas, tamanos de fuente mas
+uniformes cerca de 12pt, y menos espaciado entre secciones, para que
+el documento ocupe menos paginas (el grafico del IMAR alcanza a
+quedar en la misma pagina que la tendencia anual).
 
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
@@ -124,20 +124,21 @@ def _dibujar_logo_en_pagina(canvas_obj, doc):
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
     """
-    Crea una tarjeta KPI con tamano y tipografia uniformes, y una
-    franja de color en la parte superior a modo de acento visual.
+    Crea una tarjeta KPI compacta, con tamano y tipografia uniformes
+    (cerca de 12pt), y una franja de color delgada en la parte
+    superior a modo de acento visual.
     """
     estilo_titulo = ParagraphStyle(
-        "TituloTarjeta", fontSize=9, textColor=COLOR_TEXTO,
-        alignment=TA_CENTER, spaceAfter=4, fontName="Helvetica-Bold",
-        leading=12
+        "TituloTarjeta", fontSize=8.5, textColor=COLOR_TEXTO,
+        alignment=TA_CENTER, spaceAfter=2, fontName="Helvetica-Bold",
+        leading=10
     )
     estilo_valor = ParagraphStyle(
-        "ValorTarjeta", fontSize=14, textColor=color_acento,
+        "ValorTarjeta", fontSize=12, textColor=color_acento,
         alignment=TA_CENTER, fontName="Helvetica-Bold"
     )
 
-    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm])
+    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.15 * cm])
     franja_acento.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), color_acento),
     ]))
@@ -148,13 +149,13 @@ def _crear_tarjeta_kpi(titulo, valor, color_acento):
         [Paragraph(valor, estilo_valor)]
     ]
 
-    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm, 1.2 * cm, 1.1 * cm])
+    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.15 * cm, 0.85 * cm, 0.7 * cm])
     tabla.setStyle(TableStyle([
         ("SPAN", (0, 0), (0, 0)),
         ("BACKGROUND", (0, 1), (-1, -1), COLOR_FONDO_TARJETA),
         ("BOX", (0, 0), (-1, -1), 0.75, COLOR_BORDE),
-        ("TOPPADDING", (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 3),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
@@ -192,22 +193,22 @@ def generar_informe_diario():
 
     estilo_titulo_principal = ParagraphStyle(
         "TituloPrincipal", parent=estilos["Title"],
-        textColor=COLOR_TEXTO, fontSize=20, spaceAfter=4,
+        textColor=COLOR_TEXTO, fontSize=16, spaceAfter=2,
         fontName="Helvetica-Bold"
     )
     estilo_subtitulo = ParagraphStyle(
         "Subtitulo", parent=estilos["Normal"],
-        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceAfter=16,
+        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceAfter=8,
         fontName="Helvetica"
     )
     estilo_seccion = ParagraphStyle(
         "Seccion", parent=estilos["Heading2"],
-        textColor=COLOR_TEXTO, fontSize=14, spaceBefore=18, spaceAfter=8,
+        textColor=COLOR_TEXTO, fontSize=12, spaceBefore=10, spaceAfter=4,
         fontName="Helvetica-Bold"
     )
     estilo_cuerpo = ParagraphStyle(
         "Cuerpo", parent=estilos["Normal"],
-        fontSize=TAMANO_FUENTE_BASE, leading=16, textColor=COLOR_TEXTO,
+        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
         fontName="Helvetica"
     )
     estilo_nota = ParagraphStyle(
@@ -256,11 +257,11 @@ def generar_informe_diario():
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     elementos.append(fila_tarjetas)
-    elementos.append(Spacer(1, 18))
+    elementos.append(Spacer(1, 10))
 
     elementos.append(Paragraph("Resumen del Comportamiento del Mercado", estilo_seccion))
     elementos.append(Paragraph(comentario, estilo_cuerpo))
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 6))
 
     elementos.append(Paragraph("Evolucion del Precio - Mes Vigente", estilo_seccion))
     if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
@@ -268,14 +269,9 @@ def generar_informe_diario():
     else:
         elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
 
-    elementos.append(Spacer(1, 6))
+    elementos.append(Spacer(1, 4))
 
     # ---------- Tabla de Estadisticas Detalladas (version compacta) ----------
-    # Fuente y padding reducidos, y envuelta en KeepTogether, para que
-    # no se corte a la mitad entre dos paginas y ocupe menos espacio
-    # vertical (asi el grafico del IMAR alcanza a quedar en la misma
-    # pagina que la tendencia anual).
-
     seccion_estadisticas = []
     seccion_estadisticas.append(Paragraph("Estadisticas Detalladas", estilo_seccion))
 
@@ -319,14 +315,14 @@ def generar_informe_diario():
 
     elementos.append(KeepTogether(seccion_estadisticas))
 
-    elementos.append(Spacer(1, 6))
+    elementos.append(Spacer(1, 4))
     elementos.append(Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion))
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         elementos.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
         elementos.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
 
-    elementos.append(Spacer(1, 6))
+    elementos.append(Spacer(1, 4))
     elementos.append(Paragraph("IMAR del Dia Siguiente - Grafico por Periodo", estilo_seccion))
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
         elementos.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (5.5 / 11)))
@@ -342,7 +338,7 @@ def generar_informe_diario():
             + str(tabla_imar["dias_usados_para_el_ajuste"]) + " dia(s) de historial cruzado entre Precio de Bolsa real e IMAR.",
             estilo_nota
         ))
-        elementos.append(Spacer(1, 8))
+        elementos.append(Spacer(1, 6))
 
         estilo_celda_periodo = ParagraphStyle(
             "CeldaPeriodo", fontSize=9, textColor=COLOR_TEXTO,

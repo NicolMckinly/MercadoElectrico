@@ -18,6 +18,11 @@ siempre, en cada corrida del workflow (cada 15 minutos), sin
 importar si el informe diario ya se envio hoy, para que la
 grafica este siempre actualizada.
 
+El informe diario (que incluye el grafico y la tabla del IMAR) se
+envia tambien a un destinatario adicional (Andrea Quintero), ademas
+del correo principal configurado en el .env, unicamente para este
+informe.
+
 Todas las fechas se calculan usando ahora_colombia() (ver
 BaseDatos/zona_horaria.py), en vez de datetime.now(), para que el
 sistema siempre use la hora real de Colombia y no la del servidor
@@ -41,6 +46,11 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 
 from zona_horaria import ahora_colombia
 
+# Destinatario adicional que recibe UNICAMENTE el informe diario
+# (que incluye el grafico y la tabla del IMAR), ademas del correo
+# principal configurado en el .env.
+CORREO_ADICIONAL_IMAR = "andrea.quintero@tmmorro.com"
+
 
 def ejecutar_proceso_diario():
     hoy = ahora_colombia()
@@ -50,6 +60,9 @@ def ejecutar_proceso_diario():
     print("=" * 60)
 
     # ---------- Revisar y enviar alertas (Modulo 7) ----------
+    # Esto se revisa siempre, independientemente de si el informe
+    # diario completo ya se envio o no, para detectar eventos
+    # importantes lo antes posible.
     print("\n--- Revisando alertas ---")
     try:
         from enviar_alertas import revisar_y_enviar_alertas
@@ -74,6 +87,12 @@ def ejecutar_proceso_diario():
         print("ERROR revisando convocatorias de Ecopetrol: " + str(error))
 
     # ---------- Generacion por Fuente (datos + grafico) ----------
+    # Se descarga siempre, en cada corrida, sin importar si el informe
+    # diario ya se envio hoy, para que la grafica este siempre al dia.
+    # Se descarga un rango de varios dias hacia atras (no solo ayer),
+    # para que si algun dia falla la descarga (por ejemplo porque el
+    # IDO aun no habia publicado, o hubo un error de red), se vuelva
+    # a intentar automaticamente en la siguiente corrida sin dejar huecos.
     print("\n--- Descargando Generacion por Fuente ---")
     try:
         from generacion_por_fuente import descargar_generacion_rango
@@ -161,6 +180,9 @@ def ejecutar_proceso_diario():
         print("ERROR generando el informe: " + str(error))
 
     # ---------- 5. Enviar por correo ----------
+    # Este informe (con el grafico y la tabla del IMAR) se envia
+    # tambien al correo adicional CORREO_ADICIONAL_IMAR, ademas del
+    # correo principal del .env.
     print("\n--- PASO 5: Enviando correo ---")
     try:
         if ruta_informe is not None:
@@ -168,7 +190,8 @@ def ejecutar_proceso_diario():
             enviado = enviar_informe_por_correo(
                 ruta_informe,
                 "Informe Diario - Precio de Bolsa Nacional",
-                "Adjunto encontraras el informe diario del Precio de Bolsa Nacional, generado automaticamente."
+                "Adjunto encontraras el informe diario del Precio de Bolsa Nacional, generado automaticamente.",
+                destinatarios_extra=[CORREO_ADICIONAL_IMAR]
             )
             if enviado:
                 marcar_enviado_hoy("diario")

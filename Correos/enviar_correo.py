@@ -1,18 +1,22 @@
 """
 Modulo: enviar_correo.py
 Ubicacion: Correos/enviar_correo.py
-Envia el informe diario en PDF por correo electronico, usando Gmail
-como remitente y las credenciales guardadas en el archivo .env
-(nunca escritas directamente en el codigo, por seguridad).
+Envia correos electronicos usando Gmail como remitente y las
+credenciales guardadas en el archivo .env (nunca escritas
+directamente en el codigo, por seguridad).
+
+El adjunto PDF es OPCIONAL: si se pasa una ruta, se adjunta al
+correo (como los informes diarios, hidrologicos, etc). Si no se
+pasa nada (ruta_archivo_pdf=None), se envia solo el texto, sin
+adjunto (como la alerta de convocatorias nuevas de Ecopetrol, que
+es solo una notificacion rapida).
 
 Se puede indicar opcionalmente una lista de destinatarios
 adicionales (parametro destinatarios_extra), que se agregan junto
-al correo principal (CORREO_DESTINO del .env). Esto permite, por
-ejemplo, que solo el informe diario (con el IMAR) le llegue tambien
-a una persona adicional, sin afectar los demas informes del sistema.
+al correo principal (CORREO_DESTINO del .env).
 
-Este archivo NO genera el PDF ni hace analisis. Su unica
-responsabilidad es enviar archivos por correo.
+Este archivo NO genera PDFs ni hace analisis. Su unica
+responsabilidad es enviar correos.
 """
 import smtplib
 import ssl
@@ -33,10 +37,12 @@ PUERTO_SMTP_GMAIL = 465
 
 def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinatarios_extra=None):
     """
-    Envia un archivo PDF por correo electronico.
+    Envia un correo electronico, con o sin archivo PDF adjunto.
 
     Parametros:
-        ruta_archivo_pdf (str): ruta completa del archivo PDF a adjuntar.
+        ruta_archivo_pdf (str o None): ruta completa del archivo PDF
+            a adjuntar. Si es None, el correo se envia sin adjunto
+            (solo texto).
         asunto (str): asunto del correo.
         cuerpo_mensaje (str): texto del cuerpo del correo.
         destinatarios_extra (list de str, opcional): correos adicionales
@@ -54,7 +60,7 @@ def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinat
         print("Error: faltan credenciales en el archivo .env (CORREO_REMITENTE, CORREO_CONTRASENA_APP o CORREO_DESTINO).")
         return False
 
-    if not os.path.exists(ruta_archivo_pdf):
+    if ruta_archivo_pdf is not None and not os.path.exists(ruta_archivo_pdf):
         print("Error: no se encontro el archivo a adjuntar: " + ruta_archivo_pdf)
         return False
 
@@ -70,13 +76,14 @@ def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinat
     mensaje["Subject"] = asunto
     mensaje.attach(MIMEText(cuerpo_mensaje, "plain"))
 
-    with open(ruta_archivo_pdf, "rb") as archivo:
-        adjunto = MIMEBase("application", "octet-stream")
-        adjunto.set_payload(archivo.read())
-    encoders.encode_base64(adjunto)
-    nombre_archivo = os.path.basename(ruta_archivo_pdf)
-    adjunto.add_header("Content-Disposition", "attachment; filename=" + nombre_archivo)
-    mensaje.attach(adjunto)
+    if ruta_archivo_pdf is not None:
+        with open(ruta_archivo_pdf, "rb") as archivo:
+            adjunto = MIMEBase("application", "octet-stream")
+            adjunto.set_payload(archivo.read())
+        encoders.encode_base64(adjunto)
+        nombre_archivo = os.path.basename(ruta_archivo_pdf)
+        adjunto.add_header("Content-Disposition", "attachment; filename=" + nombre_archivo)
+        mensaje.attach(adjunto)
 
     try:
         contexto_seguro = ssl.create_default_context()

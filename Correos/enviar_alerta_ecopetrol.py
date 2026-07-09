@@ -1,29 +1,30 @@
 """
 Modulo: enviar_alerta_ecopetrol.py
 Ubicacion: Correos/enviar_alerta_ecopetrol.py
-
 Revisa si hay convocatorias nuevas de gas natural publicadas por
-Ecopetrol, y si las hay, envia un correo con todos los detalles
-tecnicos extraidos de cada una.
-"""
+Ecopetrol, y si las hay, genera especificamente el Informe del
+Mercado de Gas (Reportes/generar_informe_gas.py) y lo envia por
+correo con el detalle de cada convocatoria nueva.
 
+IMPORTANTE: este correo SIEMPRE adjunta el Informe del Mercado de
+Gas recien generado, nunca "el ultimo PDF que haya en la carpeta
+Reportes" (antes se hacia asi, y eso causaba que a veces se adjuntara
+por error el Resumen Ejecutivo Quincenal u otro informe distinto si
+ese habia sido el ultimo en generarse).
+"""
 import sys
 import os
-
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "API"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
-
+sys.path.append(os.path.join(CARPETA_PROYECTO, "Reportes"))
 from monitor_ecopetrol import buscar_convocatorias_nuevas
 from enviar_correo import enviar_informe_por_correo
-
-
 def _construir_cuerpo_del_correo(convocatorias):
     """
     Arma el texto del correo con el detalle de cada convocatoria nueva.
     """
     partes = ["Se detectaron " + str(len(convocatorias)) + " nueva(s) convocatoria(s) de gas natural en Ecopetrol:\n"]
-
     for convocatoria in convocatorias:
         partes.append("=" * 60)
         partes.append(convocatoria["titulo"])
@@ -35,46 +36,37 @@ def _construir_cuerpo_del_correo(convocatorias):
         partes.append("Plazo: " + convocatoria["plazo"])
         partes.append("Garantia: " + convocatoria["garantia"])
         partes.append("")
-
+    partes.append("Adjunto encontraras el Informe del Mercado de Gas actualizado, con el historico completo de convocatorias detectadas.")
+    partes.append("")
     partes.append("Para ver el detalle completo y los anexos, consulta la pagina oficial de Ecopetrol:")
     partes.append(
         "https://www.ecopetrol.com.co/wps/portal/Home/multisitios/comercial/es/"
         "sondeosyofertas/ofertas-informacion-comercial/informacion-comercial-gn"
     )
-
     return "\n".join(partes)
-
-
 def revisar_y_enviar_alerta_ecopetrol():
     """
-    Revisa si hay convocatorias nuevas y, si las hay, envia el correo
-    de notificacion correspondiente.
-
+    Revisa si hay convocatorias nuevas y, si las hay, genera el
+    Informe del Mercado de Gas actualizado y envia el correo de
+    notificacion correspondiente con ese informe adjunto.
     Retorna:
         La cantidad de convocatorias nuevas encontradas.
     """
     nuevas = buscar_convocatorias_nuevas()
-
     if len(nuevas) == 0:
         print("No hay convocatorias nuevas de Ecopetrol.")
         return 0
-
-    print("Se encontraron " + str(len(nuevas)) + " convocatoria(s) nueva(s). Enviando correo...")
-
+    print("Se encontraron " + str(len(nuevas)) + " convocatoria(s) nueva(s). Generando informe y enviando correo...")
     cuerpo = _construir_cuerpo_del_correo(nuevas)
 
-    carpeta_reportes = os.path.join(CARPETA_PROYECTO, "Reportes")
-    archivos_pdf = [f for f in os.listdir(carpeta_reportes) if f.endswith(".pdf")]
+    from generar_informe_gas import generar_informe_gas
+    ruta_informe_gas = generar_informe_gas()
 
-    if len(archivos_pdf) > 0:
-        archivos_pdf.sort(reverse=True)
-        ruta_adjunto = os.path.join(carpeta_reportes, archivos_pdf[0])
-        enviar_informe_por_correo(ruta_adjunto, "Nueva(s) convocatoria(s) de Gas Natural - Ecopetrol", cuerpo)
+    if ruta_informe_gas is not None:
+        enviar_informe_por_correo(ruta_informe_gas, "Nueva(s) convocatoria(s) de Gas Natural - Ecopetrol", cuerpo)
     else:
-        print("No hay ningun PDF disponible para adjuntar; no se pudo enviar (el sistema de correo requiere un adjunto).")
+        print("No se pudo generar el Informe del Mercado de Gas; no se pudo enviar (el sistema de correo requiere un adjunto).")
 
     return len(nuevas)
-
-
 if __name__ == "__main__":
     revisar_y_enviar_alerta_ecopetrol()

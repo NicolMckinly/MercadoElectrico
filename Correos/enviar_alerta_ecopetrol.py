@@ -2,29 +2,30 @@
 Modulo: enviar_alerta_ecopetrol.py
 Ubicacion: Correos/enviar_alerta_ecopetrol.py
 Revisa si hay convocatorias nuevas de gas natural publicadas por
-Ecopetrol, y si las hay, genera especificamente el Informe del
-Mercado de Gas (Reportes/generar_informe_gas.py) y lo envia por
-correo con el detalle de cada convocatoria nueva.
+Ecopetrol, y si las hay, envia un correo de NOTIFICACION RAPIDA
+(solo texto, sin ningun PDF adjunto) con los detalles que el
+sistema logra extraer automaticamente de cada convocatoria.
 
-IMPORTANTE: este correo SIEMPRE adjunta el Informe del Mercado de
-Gas recien generado, nunca "el ultimo PDF que haya en la carpeta
-Reportes" (antes se hacia asi, y eso causaba que a veces se adjuntara
-por error el Resumen Ejecutivo Quincenal u otro informe distinto si
-ese habia sido el ultimo en generarse).
+Este correo es independiente del Informe del Mercado de Gas
+(Reportes/generar_informe_gas.py) y del Resumen Ejecutivo Quincenal:
+avisa UNICAMENTE cuando Ecopetrol publica algo nuevo, sin graficos
+ni tendencias, para que sea una alerta rapida de "revisa esto".
 """
 import sys
 import os
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "API"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
-sys.path.append(os.path.join(CARPETA_PROYECTO, "Reportes"))
 from monitor_ecopetrol import buscar_convocatorias_nuevas
 from enviar_correo import enviar_informe_por_correo
 def _construir_cuerpo_del_correo(convocatorias):
     """
-    Arma el texto del correo con el detalle de cada convocatoria nueva.
+    Arma el texto del correo con el detalle de cada convocatoria
+    nueva, usando unicamente los campos que el sistema logra
+    extraer automaticamente de la pagina de Ecopetrol (Fuente,
+    Cantidad, Modalidad, Plazo, Garantia, Fecha de publicacion).
     """
-    partes = ["Se detectaron " + str(len(convocatorias)) + " nueva(s) convocatoria(s) de gas natural en Ecopetrol:\n"]
+    partes = ["Hey, salio " + str(len(convocatorias)) + " nueva(s) convocatoria(s) de gas natural en Ecopetrol. Ve a revisar:\n"]
     for convocatoria in convocatorias:
         partes.append("=" * 60)
         partes.append(convocatoria["titulo"])
@@ -36,8 +37,6 @@ def _construir_cuerpo_del_correo(convocatorias):
         partes.append("Plazo: " + convocatoria["plazo"])
         partes.append("Garantia: " + convocatoria["garantia"])
         partes.append("")
-    partes.append("Adjunto encontraras el Informe del Mercado de Gas actualizado, con el historico completo de convocatorias detectadas.")
-    partes.append("")
     partes.append("Para ver el detalle completo y los anexos, consulta la pagina oficial de Ecopetrol:")
     partes.append(
         "https://www.ecopetrol.com.co/wps/portal/Home/multisitios/comercial/es/"
@@ -46,9 +45,8 @@ def _construir_cuerpo_del_correo(convocatorias):
     return "\n".join(partes)
 def revisar_y_enviar_alerta_ecopetrol():
     """
-    Revisa si hay convocatorias nuevas y, si las hay, genera el
-    Informe del Mercado de Gas actualizado y envia el correo de
-    notificacion correspondiente con ese informe adjunto.
+    Revisa si hay convocatorias nuevas y, si las hay, envia el
+    correo de notificacion rapida (sin adjunto) correspondiente.
     Retorna:
         La cantidad de convocatorias nuevas encontradas.
     """
@@ -56,17 +54,13 @@ def revisar_y_enviar_alerta_ecopetrol():
     if len(nuevas) == 0:
         print("No hay convocatorias nuevas de Ecopetrol.")
         return 0
-    print("Se encontraron " + str(len(nuevas)) + " convocatoria(s) nueva(s). Generando informe y enviando correo...")
+    print("Se encontraron " + str(len(nuevas)) + " convocatoria(s) nueva(s). Enviando alerta...")
     cuerpo = _construir_cuerpo_del_correo(nuevas)
-
-    from generar_informe_gas import generar_informe_gas
-    ruta_informe_gas = generar_informe_gas()
-
-    if ruta_informe_gas is not None:
-        enviar_informe_por_correo(ruta_informe_gas, "Nueva(s) convocatoria(s) de Gas Natural - Ecopetrol", cuerpo)
-    else:
-        print("No se pudo generar el Informe del Mercado de Gas; no se pudo enviar (el sistema de correo requiere un adjunto).")
-
+    enviar_informe_por_correo(
+        None,
+        "Nueva(s) convocatoria(s) de Gas Natural - Ecopetrol",
+        cuerpo
+    )
     return len(nuevas)
 if __name__ == "__main__":
     revisar_y_enviar_alerta_ecopetrol()

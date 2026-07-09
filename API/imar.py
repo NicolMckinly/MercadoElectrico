@@ -22,6 +22,11 @@ los datos descargados en la base de datos del proyecto.
 NOTA: el IMAR es un pronostico (Predespacho Ideal) que XM publica
 con un dia de anticipacion. Por eso, a diferencia del Precio de
 Bolsa real, el IMAR del dia de hoy normalmente ya esta disponible.
+
+La funcion verificar_imar_de_manana_publicado() usa ahora_colombia()
+(ver BaseDatos/zona_horaria.py) en vez de datetime.now(), para que
+"mañana" siempre se calcule con la hora real de Colombia y no con la
+hora UTC del servidor (que va 5 horas adelante).
 """
 
 import requests
@@ -35,6 +40,7 @@ CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from base_datos import guardar_imar, consultar_todo_imar
+from zona_horaria import ahora_colombia
 
 URL_BASE = "https://api-portalxm.xm.com.co/administracion-archivos/ficheros/mostrar-url"
 NOMBRE_CONTENEDOR = "storageportalxm"
@@ -139,10 +145,13 @@ def verificar_imar_de_manana_publicado():
     Esto es lo que usa el Modulo 2 (monitor permanente) para saber
     cuando ya es momento de generar y enviar el informe diario.
 
+    "Mañana" se calcula con la hora real de Colombia (ahora_colombia()),
+    no con la hora UTC del servidor.
+
     Retorna:
         True si ya esta publicado, False si no.
     """
-    manana = datetime.now() + timedelta(days=1)
+    manana = ahora_colombia() + timedelta(days=1)
     resultado = obtener_imar_de_un_dia(manana)
     return resultado is not None
 
@@ -151,7 +160,7 @@ if __name__ == "__main__":
 
     # El IMAR se publica con un dia de anticipacion, asi que siempre
     # intentamos traer tambien el dia de MANANA (no solo hasta hoy).
-    fecha_fin = datetime.now() + timedelta(days=1)
+    fecha_fin = ahora_colombia() + timedelta(days=1)
     fecha_inicio = fecha_fin - timedelta(days=6)
 
     print("Consultando IMAR desde " + str(fecha_inicio.date()) + " hasta " + str(fecha_fin.date()))

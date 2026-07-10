@@ -6,7 +6,8 @@ Genera el grafico de linea comparando, dia a dia, el promedio del
 IMAR (linea verde) contra el promedio del Precio de Bolsa real
 (linea azul), para el mes vigente (desde el dia 1 hasta hoy), e
 incluye tambien el Precio de Escasez vigente como linea de referencia
-(roja, punteada).
+(roja, punteada), con su etiqueta de valor dentro del area del
+grafico.
 
 A diferencia del grafico mensual (grafico_mensual.py), que combina
 ambas fuentes en UNA sola linea (usando IMAR solo cuando falta el
@@ -14,8 +15,9 @@ precio real), este grafico muestra las DOS lineas por separado, para
 poder ver visualmente que tan cerca estuvo el IMAR (pronostico) del
 precio real que finalmente se dio ese dia.
 
-El eje Y va siempre de 0 a 1300, para que todas las graficas del
-informe compartan la misma base y escala de referencia visual.
+El eje Y va siempre de 0 a 1300 (o mas, si el Precio de Escasez lo
+supera), para que todas las graficas del informe compartan la misma
+base y escala de referencia visual.
 
 El grafico se guarda como una imagen .png dentro de esta misma carpeta.
 """
@@ -42,7 +44,7 @@ COLOR_IMAR_VERDE = "#1F8A4C"
 COLOR_PRECIO_AZUL = "#1F4E79"
 COLOR_ESCASEZ = "#B22222"
 
-LIMITE_SUPERIOR_EJE_Y = 1300
+LIMITE_SUPERIOR_MINIMO = 1300
 
 MESES_EN_ESPANOL = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
@@ -104,6 +106,13 @@ def generar_grafico_comparacion_imar_bolsa():
     )
 
     _, valor_escasez = consultar_precio_escasez_mas_reciente()
+
+    limite_superior = LIMITE_SUPERIOR_MINIMO
+    if valor_escasez is not None and valor_escasez * 1.06 > limite_superior:
+        limite_superior = valor_escasez * 1.06
+
+    ejes.set_ylim(0, limite_superior)
+
     if valor_escasez is not None:
         ejes.axhline(
             y=valor_escasez,
@@ -113,6 +122,23 @@ def generar_grafico_comparacion_imar_bolsa():
             label="Precio de Escasez"
         )
 
+        # Etiqueta con el valor exacto, ubicada DENTRO del area del
+        # grafico, un poco por debajo de la linea (para no salirse
+        # del borde superior) y a la izquierda (donde no interfiere
+        # con las lineas de datos).
+        fechas_todas = list(imar_mes["fecha_dt"]) + list(precio_bolsa_mes["fecha_dt"])
+        primer_fecha = min(fechas_todas)
+        ejes.annotate(
+            "{:.0f}".format(valor_escasez),
+            xy=(primer_fecha, valor_escasez),
+            xytext=(6, -14),
+            textcoords="offset points",
+            ha="left",
+            fontsize=9,
+            color=COLOR_ESCASEZ,
+            fontweight="bold"
+        )
+
     ejes.set_title("IMAR vs Precio de Bolsa Real (" + nombre_mes + ")", fontsize=13, fontweight="bold")
     ejes.set_ylabel("Precio promedio diario ($/kWh)")
     ejes.set_xlabel("Dia del mes")
@@ -120,7 +146,6 @@ def generar_grafico_comparacion_imar_bolsa():
     ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d"))
     ejes.xaxis.set_major_locator(mdates.DayLocator())
 
-    ejes.set_ylim(0, LIMITE_SUPERIOR_EJE_Y)
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False)
 

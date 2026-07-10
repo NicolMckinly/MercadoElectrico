@@ -7,7 +7,13 @@ del proyecto: promedio, maximo, minimo, desviacion estandar, volatilidad,
 tendencia, promedios moviles (5, 10, 20 dias), promedio semanal y mensual.
 
 Tambien genera un pequeno pronostico de corto plazo basado en la
-tendencia reciente, y un comentario automatico en lenguaje sencillo.
+tendencia reciente, y un comentario automatico en lenguaje sencillo
+(con tildes y ortografia correcta, ya que este texto se muestra
+directamente en el informe PDF).
+
+El promedio mensual se calcula usando ahora_colombia() (ver
+BaseDatos/zona_horaria.py) en vez de datetime.now(), para que el
+"mes en curso" siempre corresponda a la hora real de Colombia.
 
 Este archivo NO descarga datos ni genera graficos. Solo hace calculos
 a partir de la serie combinada (Precio de Bolsa real + IMAR).
@@ -20,8 +26,10 @@ from datetime import datetime
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
+sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from combinar_precio import obtener_serie_combinada, COLUMNAS_HORA
+from zona_horaria import ahora_colombia
 
 
 def calcular_estadisticas():
@@ -84,8 +92,8 @@ def calcular_estadisticas():
     # Promedio semanal: promedio de los ultimos 7 dias
     resultado["promedio_semanal"] = _promedio_ultimos_n_dias(serie, 7)
 
-    # Promedio mensual: promedio de los dias del mes en curso
-    hoy = datetime.now()
+    # Promedio mensual: promedio de los dias del mes en curso (hora Colombia)
+    hoy = ahora_colombia()
     dias_del_mes_actual = serie[
         (serie["fecha_dt"].dt.year == hoy.year) & (serie["fecha_dt"].dt.month == hoy.month)
     ]
@@ -122,7 +130,7 @@ def _calcular_tendencia(serie):
     anteriores a esos.
     """
     if len(serie) < 10:
-        return "Datos insuficientes para determinar tendencia (se necesitan al menos 10 dias)"
+        return "Datos insuficientes para determinar tendencia (se necesitan al menos 10 días)"
 
     ultimos_5 = serie.tail(5)["promedio_diario"].mean()
     anteriores_5 = serie.tail(10).head(5)["promedio_diario"].mean()
@@ -159,8 +167,9 @@ def _calcular_pronostico_simple(serie):
 def generar_comentario_automatico(estadisticas):
     """
     Genera un pequeno texto en lenguaje sencillo describiendo el
-    comportamiento reciente del precio, similar al ejemplo de la
-    especificacion del proyecto.
+    comportamiento reciente del precio, con tildes y ortografia
+    correcta, ya que este texto se muestra directamente en el
+    informe PDF.
 
     Parametros:
         estadisticas (dict): el resultado de calcular_estadisticas()
@@ -170,19 +179,18 @@ def generar_comentario_automatico(estadisticas):
     """
     if estadisticas["variacion_diaria"] is not None:
         if estadisticas["variacion_diaria"] > 0:
-            direccion = "aumento"
+            direccion = "aumentó"
         elif estadisticas["variacion_diaria"] < 0:
-            direccion = "disminuyo"
+            direccion = "disminuyó"
         else:
             direccion = "se mantuvo igual"
 
-        frase_variacion = "El precio de bolsa " + direccion + " respecto al dia anterior"
+        frase_variacion = "El precio de bolsa " + direccion + " respecto al día anterior"
     else:
-        frase_variacion = "Aun no hay suficiente historico para calcular la variacion diaria"
+        frase_variacion = "Aún no hay suficiente histórico para calcular la variación diaria"
 
     precio_escasez_disponible = False
     try:
-        sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
         from base_datos import consultar_precio_escasez_mas_reciente
         _, valor_escasez = consultar_precio_escasez_mas_reciente()
         if valor_escasez is not None:
@@ -192,21 +200,21 @@ def generar_comentario_automatico(estadisticas):
 
     if precio_escasez_disponible:
         if estadisticas["precio_dia_mas_reciente"] < valor_escasez:
-            frase_escasez = "y continua por debajo del precio de escasez"
+            frase_escasez = "y continúa por debajo del precio de escasez"
         else:
-            frase_escasez = "y ya supera el precio de escasez, lo cual amerita atencion"
+            frase_escasez = "y ya supera el precio de escasez, lo cual amerita atención"
     else:
         frase_escasez = ""
 
     comentario = frase_variacion + " " + frase_escasez + "."
 
     if "insuficientes" in estadisticas["tendencia"]:
-        comentario += " Aun no hay suficiente historico acumulado para determinar la tendencia (se necesitan al menos 10 dias de datos)."
+        comentario += " Aún no hay suficiente histórico acumulado para determinar la tendencia (se necesitan al menos 10 días de datos)."
     else:
         comentario += " La tendencia reciente es: " + estadisticas["tendencia"] + "."
 
     if estadisticas["fuente_dia_mas_reciente"] == "IMAR":
-        comentario += " Nota: el dato mas reciente corresponde al IMAR (Predespacho Ideal), ya que el precio real de bolsa de ese dia aun no ha sido publicado por XM."
+        comentario += " Nota: el dato más reciente corresponde al IMAR (Predespacho Ideal), ya que el precio real de bolsa de ese día aún no ha sido publicado por XM."
 
     return comentario
 

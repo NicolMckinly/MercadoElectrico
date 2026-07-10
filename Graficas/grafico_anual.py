@@ -23,6 +23,9 @@ BaseDatos/zona_horaria.py) en vez de datetime.now(), para que el
 sistema siempre use la hora real de Colombia y no la hora UTC del
 servidor (que va 5 horas adelante).
 
+El eje Y siempre parte desde 0, para que todas las graficas del
+informe compartan la misma base de referencia visual.
+
 Este grafico se actualiza automaticamente cada vez que se ejecuta,
 tomando todo lo que exista en la base de datos hasta ese momento
 (no hay que hacer nada especial para "actualizarlo").
@@ -210,11 +213,14 @@ def generar_grafico_anual():
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False)
 
+    # El eje Y siempre parte desde 0, para compartir la misma base
+    # visual con las demas graficas del informe.
+    ejes.set_ylim(bottom=0)
+
     valores_validos_escasez = [v for v in valores_escasez if v is not None]
     if len(valores_validos_escasez) > 0:
         techo = max(max(valores_validos_escasez), serie["promedio_diario"].max()) * 1.08
-        piso = min(serie["promedio_diario"].min(), min(valores_validos_escasez)) * 0.95
-        ejes.set_ylim(piso, techo)
+        ejes.set_ylim(top=techo)
 
     figura.tight_layout()
 

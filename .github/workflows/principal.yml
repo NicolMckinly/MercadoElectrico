@@ -1,67 +1,40 @@
 name: Sistema Mercado Electrico
-# Este workflow ya NO se dispara con el "schedule" interno de GitHub
-# (no era confiable con intervalos cortos). Ahora se dispara desde un
-# servicio externo (cron-job.org) que llama a este workflow cada 15
-# minutos usando "workflow_dispatch".
 on:
-  # Esto permite ejecutarlo manualmente desde GitHub (boton "Run workflow"),
-  # y tambien es lo que usa el cron externo para dispararlo automaticamente.
   workflow_dispatch:
 jobs:
   ejecutar_sistema:
     runs-on: ubuntu-latest
     steps:
-      # Paso 1: Descarga una copia del codigo del repositorio
       - name: Descargar el codigo
         uses: actions/checkout@v4
-      # Paso 2: Instala Python en la maquina virtual de GitHub
       - name: Instalar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      # Paso 3: Instala todas las librerias que el proyecto necesita
-      # (incluye "holidays", para calcular los dias festivos de
-      # Colombia y ajustar el envio del Resumen Ejecutivo Quincenal).
       - name: Instalar dependencias
         run: |
           pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl beautifulsoup4 holidays
-      # Paso 4: Crea el archivo .env con las credenciales guardadas
-      # de forma segura en los "Secrets" de GitHub (nunca quedan
-      # visibles en el codigo ni en los registros de ejecucion).
       - name: Crear archivo de credenciales
         run: |
           echo "CORREO_DESTINO=${{ secrets.CORREO_DESTINO }}" >> .env
           echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
           echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
           echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
-      # Paso 5: Ejecuta el proceso diario (Modulo 1) - todos los dias
+      - name: PRUEBA - Regenerar informe diario
+        run: python Reportes/generar_informe_diario.py
       - name: Ejecutar proceso diario
         run: python main_diario.py
-      # Paso 6: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
-      # solo los martes y jueves, entre las 8:00 AM y las 12:00 PM
-      # hora Colombia (13:00-16:59 UTC). Dentro de esa ventana, el
-      # propio main_hidrologico.py se encarga de revisar si los datos
-      # de ayer ya estan publicados y si el correo ya se envio hoy,
-      # para mandarlo una sola vez, lo mas temprano posible.
       - name: Ejecutar proceso hidrologico (martes y jueves)
         run: |
           DIA=$(date -u +%u)
           HORA=$(date -u +%H)
           if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
-            echo "Es martes o jueves, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
             python main_hidrologico.py
           else
             echo "No corresponde ejecutar el proceso hidrologico en este momento."
           fi
-      # Paso 6.5: Revisa si hoy corresponde enviar el Resumen
-      # Ejecutivo Quincenal (Modulo 6). Actua el dia 15 y el ultimo
-      # dia del mes, ajustados al dia habil anterior mas cercano si
-      # caen en fin de semana o festivo.
       - name: Revisar Resumen Ejecutivo Quincenal
         run: python main_ejecutivo.py
-      # Paso 7: Guarda los cambios en la base de datos y los informes
-      # generados, subiendolos de vuelta al repositorio, para que el
-      # historico nunca se pierda entre una ejecucion y otra.
       - name: Guardar cambios en el repositorio
         run: |
           git config --global user.name "Sistema Automatico"

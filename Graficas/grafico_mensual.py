@@ -21,8 +21,10 @@ BaseDatos/zona_horaria.py) en vez de datetime.now(), para que el
 sistema siempre use la hora real de Colombia y no la hora UTC del
 servidor (que va 5 horas adelante).
 
-El eje Y siempre parte desde 0, para que todas las graficas del
-informe compartan la misma base de referencia visual.
+El eje Y siempre parte desde 0, y su limite superior es el mayor
+valor entre 1300 y el Precio de Escasez (mas un pequeno margen), para
+que la etiqueta del Precio de Escasez nunca quede cortada si en algun
+mes ese valor supera los 1300.
 
 El grafico se guarda como una imagen .png dentro de esta misma carpeta.
 """
@@ -49,6 +51,8 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 COLOR_PRECIO_REAL = "#1F4E79"   # azul oscuro
 COLOR_IMAR = "#D9822B"          # naranja
 COLOR_ESCASEZ = "#B22222"       # rojo ladrillo
+
+LIMITE_SUPERIOR_MINIMO = 1300
 
 MESES_EN_ESPANOL = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
@@ -121,12 +125,18 @@ def generar_grafico_mensual():
 
     nombre_mes = MESES_EN_ESPANOL[hoy.month] + " " + str(hoy.year)
 
-    # El eje Y siempre parte desde 0, para compartir la misma base
-    # visual con las demas graficas del informe.
-    ejes.set_ylim(bottom=0)
-
     # Linea horizontal de referencia con el Precio de Escasez vigente del mes
     fecha_escasez, valor_escasez = consultar_precio_escasez_mas_reciente()
+
+    limite_superior = LIMITE_SUPERIOR_MINIMO
+    if valor_escasez is not None and valor_escasez * 1.06 > limite_superior:
+        limite_superior = valor_escasez * 1.06
+
+    # El eje Y siempre parte desde 0, y llega hasta el mayor valor
+    # entre 1300 y el Precio de Escasez (con margen), para compartir
+    # la misma base visual con las demas graficas del informe.
+    ejes.set_ylim(0, limite_superior)
+
     if valor_escasez is not None:
         ejes.axhline(
             y=valor_escasez,
@@ -149,10 +159,6 @@ def generar_grafico_mensual():
             fontweight="bold",
             clip_on=False
         )
-
-        # Le damos un poco de espacio extra arriba del grafico, para que
-        # la etiqueta del Precio de Escasez no quede cortada por el borde
-        ejes.set_ylim(top=valor_escasez * 1.04)
 
     ejes.set_title("Precio de Bolsa Nacional - " + nombre_mes, fontsize=14, fontweight="bold")
     ejes.set_ylabel("Precio promedio diario ($/kWh)")

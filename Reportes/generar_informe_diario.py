@@ -84,7 +84,7 @@ ANCHO_TARJETA = 4.3 * cm
 
 # Margenes de la pagina. Izquierdo/derecho/inferior mas angostos para
 # ganar espacio de contenido; superior mas amplio para dejar sitio al logo.
-MARGEN_SUPERIOR = 2.6 * cm
+MARGEN_SUPERIOR = 1.5 * cm
 MARGEN_INFERIOR = 1.0 * cm
 MARGEN_IZQUIERDO = 1.0 * cm
 MARGEN_DERECHO = 1.0 * cm

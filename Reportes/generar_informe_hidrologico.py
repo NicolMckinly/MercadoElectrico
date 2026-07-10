@@ -4,11 +4,17 @@ Ubicacion: Reportes/generar_informe_hidrologico.py
 
 Genera el informe de Variables Hidrologicas en PDF (Modulo 3 de la
 especificacion del proyecto): resumen ejecutivo con los indicadores
-principales, comentario automatico, y los graficos de embalses y
-aportes hidricos.
+principales, comentario automatico, los graficos de embalses y
+aportes hidricos, el grafico de Evolucion del Precio de Bolsa (mes
+vigente, trasladado desde el informe diario), y el grafico de
+Generacion por Fuente.
 
 Este informe se envia unicamente los MARTES y JUEVES, segun la
 especificacion original del proyecto.
+
+La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
+en vez de datetime.now(), para que el nombre del archivo y la fecha
+mostrada en el titulo siempre correspondan a la hora real de Colombia.
 
 Diseno: mismo estilo que el informe diario (Helvetica, tamano 12,
 titulos en negrita, todo en negro), con tarjetas KPI de tamano
@@ -17,7 +23,6 @@ uniforme y un acento de color en la parte superior de cada una.
 
 import sys
 import os
-from datetime import datetime
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
@@ -31,10 +36,13 @@ from reportlab.lib.enums import TA_CENTER
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
+sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from estadisticas_hidrologia import calcular_estadisticas_hidrologia, generar_comentario_hidrologia
 from grafico_hidrologia import generar_grafico_embalses, generar_grafico_aportes
 from grafico_generacion import generar_grafico_generacion
+from grafico_mensual import generar_grafico_mensual
+from zona_horaria import ahora_colombia
 
 sys.path.append(os.path.join(CARPETA_PROYECTO, "API"))
 from noticias import recopilar_noticias
@@ -53,6 +61,12 @@ COLOR_ACENTO_APORTES = colors.HexColor("#D9822B")
 
 TAMANO_FUENTE_BASE = 12
 ANCHO_TARJETA = 5.4 * cm
+
+MESES_EN_ESPANOL_LARGO = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
 
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
@@ -111,8 +125,9 @@ def generar_informe_hidrologico():
     ruta_grafico_embalses = generar_grafico_embalses()
     ruta_grafico_aportes = generar_grafico_aportes()
     ruta_grafico_generacion = generar_grafico_generacion()
+    ruta_grafico_precio_mensual = generar_grafico_mensual()
 
-    hoy = datetime.now()
+    hoy = ahora_colombia()
     nombre_archivo = "Informe_Hidrologico_" + hoy.strftime("%Y_%m_%d") + ".pdf"
     ruta_pdf = os.path.join(CARPETA_ACTUAL, nombre_archivo)
 
@@ -150,8 +165,10 @@ def generar_informe_hidrologico():
 
     elementos = []
 
-    elementos.append(Paragraph("Informe de Variables Hidrologicas", estilo_titulo_principal))
-    elementos.append(Paragraph(hoy.strftime("%d de %B de %Y"), estilo_subtitulo))
+    elementos.append(Paragraph("Informe de Variables Hidrológicas", estilo_titulo_principal))
+
+    fecha_en_espanol = hoy.strftime("%d") + " de " + MESES_EN_ESPANOL_LARGO[hoy.month] + " de " + str(hoy.year)
+    elementos.append(Paragraph(fecha_en_espanol, estilo_subtitulo))
 
     tarjeta_embalses = _crear_tarjeta_kpi(
         "Embalses",
@@ -163,7 +180,7 @@ def generar_informe_hidrologico():
         texto_variacion = "{:+.2f}".format(estadisticas["embalses_variacion_diaria_puntos"] * 100) + " pp"
     else:
         texto_variacion = "N/D"
-    tarjeta_variacion_embalses = _crear_tarjeta_kpi("Variacion Diaria Embalses", texto_variacion, COLOR_ACENTO_VARIACION)
+    tarjeta_variacion_embalses = _crear_tarjeta_kpi("Variación Diaria Embalses", texto_variacion, COLOR_ACENTO_VARIACION)
 
     tarjeta_aportes = _crear_tarjeta_kpi(
         "Aportes SIN",
@@ -179,7 +196,7 @@ def generar_informe_hidrologico():
     elementos.append(fila_tarjetas)
     elementos.append(Spacer(1, 18))
 
-    elementos.append(Paragraph("Resumen del Comportamiento Hidrologico", estilo_seccion))
+    elementos.append(Paragraph("Resumen del Comportamiento Hidrológico", estilo_seccion))
     elementos.append(Paragraph(comentario, estilo_cuerpo))
     elementos.append(Spacer(1, 10))
 
@@ -187,27 +204,35 @@ def generar_informe_hidrologico():
     if ruta_grafico_embalses is not None and os.path.exists(ruta_grafico_embalses):
         elementos.append(Image(ruta_grafico_embalses, width=17 * cm, height=17 * cm * (5 / 11)))
     else:
-        elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
 
     elementos.append(Spacer(1, 10))
 
-    elementos.append(Paragraph("Aportes Hidricos SIN vs Media Historica", estilo_seccion))
+    elementos.append(Paragraph("Aportes Hídricos SIN vs Media Histórica", estilo_seccion))
     if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
         elementos.append(Image(ruta_grafico_aportes, width=17 * cm, height=17 * cm * (5 / 11)))
     else:
-        elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
 
     elementos.append(Spacer(1, 10))
 
-    elementos.append(Paragraph("Generacion por Fuente", estilo_seccion))
+    elementos.append(Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion))
+    if ruta_grafico_precio_mensual is not None and os.path.exists(ruta_grafico_precio_mensual):
+        elementos.append(Image(ruta_grafico_precio_mensual, width=17 * cm, height=17 * cm * (5 / 11)))
+    else:
+        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+
+    elementos.append(Spacer(1, 10))
+
+    elementos.append(Paragraph("Generación por Fuente", estilo_seccion))
     if ruta_grafico_generacion is not None and os.path.exists(ruta_grafico_generacion):
         elementos.append(Image(ruta_grafico_generacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        elementos.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
 
     # ---------- Noticias (Modulo 5) ----------
     elementos.append(Spacer(1, 10))
-    elementos.append(Paragraph("Noticias Relacionadas (ultimos 7 dias)", estilo_seccion))
+    elementos.append(Paragraph("Noticias Relacionadas (últimos 7 días)", estilo_seccion))
 
     recopilar_noticias()
     noticias = consultar_noticias_recientes(dias=7)
@@ -224,8 +249,8 @@ def generar_informe_hidrologico():
     )
 
     elementos.append(Paragraph(
-        "Los siguientes son titulares recientes recopilados automaticamente de fuentes publicas, "
-        "sin ninguna interpretacion generada por el sistema. Para el analisis completo de cada "
+        "Los siguientes son titulares recientes recopilados automáticamente de fuentes públicas, "
+        "sin ninguna interpretación generada por el sistema. Para el análisis completo de cada "
         "noticia, consulte el enlace original.",
         estilo_nota_noticias
     ))
@@ -243,7 +268,7 @@ def generar_informe_hidrologico():
 
     documento.build(elementos)
 
-    print("Informe hidrologico generado: " + ruta_pdf)
+    print("Informe hidrológico generado: " + ruta_pdf)
     return ruta_pdf
 
 

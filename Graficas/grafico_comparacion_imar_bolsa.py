@@ -3,11 +3,11 @@ Modulo: grafico_comparacion_imar_bolsa.py
 Ubicacion: Graficas/grafico_comparacion_imar_bolsa.py
 
 Genera el grafico de linea comparando, dia a dia, el promedio del
-IMAR (linea verde) contra el promedio del Precio de Bolsa real
-(linea azul), para el mes vigente (desde el dia 1 hasta hoy), e
-incluye tambien el Precio de Escasez vigente como linea de referencia
-(roja, punteada), con su etiqueta de valor dentro del area del
-grafico.
+IMAR (linea amarilla punteada) contra el promedio del Precio de
+Bolsa real (linea azul solida), para el mes vigente (desde el dia 1
+hasta hoy), e incluye tambien el Precio de Escasez vigente como
+linea de referencia (roja, punteada), con su etiqueta de valor
+dentro del area del grafico.
 
 A diferencia del grafico mensual (grafico_mensual.py), que combina
 ambas fuentes en UNA sola linea (usando IMAR solo cuando falta el
@@ -40,7 +40,7 @@ from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
-COLOR_IMAR_VERDE = "#1F8A4C"
+COLOR_IMAR_AMARILLO = "#D9A404"
 COLOR_PRECIO_AZUL = "#1F4E79"
 COLOR_ESCASEZ = "#B22222"
 
@@ -96,7 +96,7 @@ def generar_grafico_comparacion_imar_bolsa():
 
     ejes.plot(
         imar_mes["fecha_dt"], imar_mes["promedio_diario"],
-        "o-", color=COLOR_IMAR_VERDE, linewidth=2.5, markersize=6,
+        "o--", color=COLOR_IMAR_AMARILLO, linewidth=2.5, markersize=6,
         label="IMAR"
     )
     ejes.plot(
@@ -122,10 +122,6 @@ def generar_grafico_comparacion_imar_bolsa():
             label="Precio de Escasez"
         )
 
-        # Etiqueta con el valor exacto, ubicada DENTRO del area del
-        # grafico, un poco por debajo de la linea (para no salirse
-        # del borde superior) y a la izquierda (donde no interfiere
-        # con las lineas de datos).
         fechas_todas = list(imar_mes["fecha_dt"]) + list(precio_bolsa_mes["fecha_dt"])
         primer_fecha = min(fechas_todas)
         ejes.annotate(

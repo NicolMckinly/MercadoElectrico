@@ -7,10 +7,10 @@ de la especificacion del proyecto).
 
 Estructura del documento:
 PAGINA 1: Titulo, tarjetas KPI, Resumen del Comportamiento del
-    Mercado, y tabla de Estadisticas Detalladas.
-PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente), grafico
-    de Tendencia Anual del Precio de Bolsa, y grafico del IMAR del
-    dia siguiente periodo a periodo.
+    Mercado, tabla de Estadisticas Detalladas, y grafico de
+    Tendencia Anual del Precio de Bolsa.
+PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente) y
+    grafico del IMAR del dia siguiente periodo a periodo.
 PAGINA 3: Tabla del IMAR del dia siguiente, periodo a periodo (con
     Costo WCO GasTY y Costo GE Gas TY, y fila de promedio).
 
@@ -309,18 +309,9 @@ def generar_informe_diario():
 
     elementos.append(KeepTogether(seccion_estadisticas))
 
-    # ======================= PAGINA 2 =======================
-    elementos.append(PageBreak())
-
-    seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
-    if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
-        seccion_comparacion.append(Image(ruta_grafico_comparacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
-    else:
-        seccion_comparacion.append(Paragraph("Gráfico no disponible todavía.", estilo_cuerpo))
-    elementos.append(KeepTogether(seccion_comparacion))
-
     elementos.append(Spacer(1, 4))
 
+    # ---------- Grafico Tendencia Anual del Precio de Bolsa (misma pagina que las estadisticas) ----------
     seccion_anual = [Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion)]
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         seccion_anual.append(Image(ruta_grafico_anual, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
@@ -328,11 +319,23 @@ def generar_informe_diario():
         seccion_anual.append(Paragraph("Gráfico anual no disponible todavía.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_anual))
 
-    elementos.append(Spacer(1, 4))
+    # ======================= PAGINA 2 =======================
+    elementos.append(PageBreak())
 
+    # ---------- Grafico IMAR vs Precio de Bolsa Real - Mes Vigente ----------
+    seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
+    if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
+        seccion_comparacion.append(Image(ruta_grafico_comparacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.6 / 11)))
+    else:
+        seccion_comparacion.append(Paragraph("Gráfico no disponible todavía.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_comparacion))
+
+    elementos.append(Spacer(1, 6))
+
+    # ---------- Grafico del IMAR del Dia Siguiente ----------
     seccion_imar = [Paragraph("IMAR del Día Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
-        seccion_imar.append(Image(ruta_grafico_imar, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.8 / 11)))
+        seccion_imar.append(Image(ruta_grafico_imar, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (5.4 / 11)))
     else:
         seccion_imar.append(Paragraph("El IMAR del día siguiente aún no está publicado, no hay gráfico disponible.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_imar))

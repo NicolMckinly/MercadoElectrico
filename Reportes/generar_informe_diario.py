@@ -4,15 +4,15 @@ Ubicacion: Reportes/generar_informe_diario.py
 
 Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
 de la especificacion del proyecto): pagina ejecutiva con indicadores,
-comentario automatico, grafico mensual, grafico anual, grafico del
-IMAR del dia siguiente periodo a periodo, grafico comparativo IMAR
-vs Precio de Bolsa real, tabla de estadisticas, y tabla del IMAR del
+comentario automatico, grafico mensual, grafico comparativo IMAR vs
+Precio de Bolsa real, tabla de estadisticas, grafico anual, grafico
+del IMAR del dia siguiente periodo a periodo, y tabla del IMAR del
 dia siguiente (crudo, ajustado, Costo WCO GasTY y Costo GE Gas TY,
 con fila de promedio al final, y el periodo mas alto resaltado en
 verde y el mas bajo en amarillo).
 
 Todos los textos visibles del PDF (titulos, encabezados de tabla,
-etc.) llevan tildes y ortografia correcta en espanol.
+notas, etc.) llevan tildes y ortografia correcta en espanol.
 
 Los valores de Costo WCO GasTY y Costo GE Gas TY son ESTATICOS por
 ahora (se definen como constantes mas abajo, COSTO_WCO_GASTY y
@@ -248,7 +248,7 @@ def generar_informe_diario():
     else:
         texto_variacion = "N/D"
 
-    tarjeta_variacion = _crear_tarjeta_kpi("Variacion Diaria", texto_variacion, COLOR_ACENTO_VARIACION)
+    tarjeta_variacion = _crear_tarjeta_kpi("Variación Diaria", texto_variacion, COLOR_ACENTO_VARIACION)
 
     tarjeta_promedio = _crear_tarjeta_kpi(
         "Promedio Mensual",
@@ -271,11 +271,11 @@ def generar_informe_diario():
     elementos.append(Spacer(1, 6))
 
     # ---------- Grafico mensual (titulo + imagen agrupados) ----------
-    seccion_mensual = [Paragraph("Evolucion del Precio - Mes Vigente", estilo_seccion)]
+    seccion_mensual = [Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion)]
     if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
         seccion_mensual.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        seccion_mensual.append(Paragraph("Grafico no disponible.", estilo_cuerpo))
+        seccion_mensual.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_mensual))
 
     elementos.append(Spacer(1, 4))
@@ -285,14 +285,14 @@ def generar_informe_diario():
     if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
         seccion_comparacion.append(Image(ruta_grafico_comparacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        seccion_comparacion.append(Paragraph("Grafico no disponible todavia.", estilo_cuerpo))
+        seccion_comparacion.append(Paragraph("Gráfico no disponible todavía.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_comparacion))
 
     elementos.append(Spacer(1, 4))
 
     # ---------- Tabla de Estadisticas Detalladas (version compacta) ----------
     seccion_estadisticas = []
-    seccion_estadisticas.append(Paragraph("Estadisticas Detalladas", estilo_seccion))
+    seccion_estadisticas.append(Paragraph("Estadísticas Detalladas", estilo_seccion))
 
     estilo_celda_indicador = ParagraphStyle(
         "CeldaIndicador", fontSize=9, textColor=COLOR_TEXTO,
@@ -312,12 +312,12 @@ def generar_informe_diario():
 
     datos_tabla_estadisticas = [
         [Paragraph("Indicador", estilo_celda_encabezado), Paragraph("Valor", estilo_celda_encabezado)],
-        fila("Desviacion estandar", "{:.2f}".format(estadisticas["desviacion_estandar"])),
+        fila("Desviación estándar", "{:.2f}".format(estadisticas["desviacion_estandar"])),
         fila("Volatilidad", "{:.2f}".format(estadisticas["volatilidad_porcentual"]) + "%"),
-        fila("Promedio ultimos 5 dias", "{:.2f}".format(estadisticas["promedio_ultimos_5_dias"]) + " $/kWh"),
+        fila("Promedio últimos 5 días", "{:.2f}".format(estadisticas["promedio_ultimos_5_dias"]) + " $/kWh"),
         fila("Promedio semanal", "{:.2f}".format(estadisticas["promedio_semanal"]) + " $/kWh"),
         fila("Tendencia", estadisticas["tendencia"]),
-        fila("Pronostico proximo dia", "{:.2f}".format(estadisticas["pronostico_manana"]) + " $/kWh" if estadisticas["pronostico_manana"] is not None else "N/D"),
+        fila("Pronóstico próximo día", "{:.2f}".format(estadisticas["pronostico_manana"]) + " $/kWh" if estadisticas["pronostico_manana"] is not None else "N/D"),
     ]
 
     tabla_estadisticas = Table(datos_tabla_estadisticas, colWidths=[8 * cm, 9 * cm], repeatRows=1)
@@ -341,26 +341,26 @@ def generar_informe_diario():
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         seccion_anual.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
     else:
-        seccion_anual.append(Paragraph("Grafico anual no disponible todavia.", estilo_cuerpo))
+        seccion_anual.append(Paragraph("Gráfico anual no disponible todavía.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_anual))
 
     elementos.append(Spacer(1, 4))
 
     # ---------- Grafico del IMAR (mas grande, con su titulo agrupado) ----------
-    seccion_imar = [Paragraph("IMAR del Dia Siguiente", estilo_seccion)]
+    seccion_imar = [Paragraph("IMAR del Día Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
         seccion_imar.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (6.5 / 11)))
     else:
-        seccion_imar.append(Paragraph("El IMAR del dia siguiente aun no esta publicado, no hay grafico disponible.", estilo_cuerpo))
+        seccion_imar.append(Paragraph("El IMAR del día siguiente aún no está publicado, no hay gráfico disponible.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_imar))
 
     elementos.append(PageBreak())
-    elementos.append(Paragraph("IMAR del Dia Siguiente - Periodo a Periodo", estilo_seccion))
+    elementos.append(Paragraph("IMAR del Día Siguiente - Período a Período", estilo_seccion))
 
     if tabla_imar is not None:
         elementos.append(Paragraph(
             "Fecha: " + tabla_imar["fecha"] + "  |  Ajuste calculado con "
-            + str(tabla_imar["dias_usados_para_el_ajuste"]) + " dia(s) de historial cruzado entre Precio de Bolsa real e IMAR.",
+            + str(tabla_imar["dias_usados_para_el_ajuste"]) + " día(s) de historial cruzado entre Precio de Bolsa real e IMAR.",
             estilo_nota
         ))
         elementos.append(Spacer(1, 6))
@@ -387,7 +387,7 @@ def generar_informe_diario():
         )
 
         datos_tabla_imar = [[
-            Paragraph("Periodo", estilo_celda_encabezado_imar),
+            Paragraph("Período", estilo_celda_encabezado_imar),
             Paragraph("IMAR", estilo_celda_encabezado_imar),
             Paragraph("IMAR Ajustado", estilo_celda_encabezado_imar),
             Paragraph("Costo WCO GasTY", estilo_celda_encabezado_imar),
@@ -439,7 +439,7 @@ def generar_informe_diario():
         ]))
         elementos.append(tabla_imar_pdf)
     else:
-        elementos.append(Paragraph("El IMAR del dia siguiente aun no esta publicado por XM.", estilo_cuerpo))
+        elementos.append(Paragraph("El IMAR del día siguiente aún no está publicado por XM.", estilo_cuerpo))
 
     documento.build(
         elementos,

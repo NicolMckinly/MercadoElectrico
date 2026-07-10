@@ -4,13 +4,18 @@ Ubicacion: Graficas/grafico_comparacion_imar_bolsa.py
 
 Genera el grafico de linea comparando, dia a dia, el promedio del
 IMAR (linea verde) contra el promedio del Precio de Bolsa real
-(linea azul), para el mes vigente (desde el dia 1 hasta hoy).
+(linea azul), para el mes vigente (desde el dia 1 hasta hoy), e
+incluye tambien el Precio de Escasez vigente como linea de referencia
+(roja, punteada).
 
 A diferencia del grafico mensual (grafico_mensual.py), que combina
-ambas fuentes en UNA sola linea (usando IMAR solo quando falta el
+ambas fuentes en UNA sola linea (usando IMAR solo cuando falta el
 precio real), este grafico muestra las DOS lineas por separado, para
 poder ver visualmente que tan cerca estuvo el IMAR (pronostico) del
 precio real que finalmente se dio ese dia.
+
+El eje Y va siempre de 0 a 1300, para que todas las graficas del
+informe compartan la misma base y escala de referencia visual.
 
 El grafico se guarda como una imagen .png dentro de esta misma carpeta.
 """
@@ -22,20 +27,22 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
-from datetime import datetime
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from combinar_precio import COLUMNAS_HORA
-from base_datos import consultar_todo_precio_bolsa, consultar_todo_imar
+from base_datos import consultar_todo_precio_bolsa, consultar_todo_imar, consultar_precio_escasez_mas_reciente
 from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
 COLOR_IMAR_VERDE = "#1F8A4C"
 COLOR_PRECIO_AZUL = "#1F4E79"
+COLOR_ESCASEZ = "#B22222"
+
+LIMITE_SUPERIOR_EJE_Y = 1300
 
 MESES_EN_ESPANOL = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
@@ -47,7 +54,8 @@ MESES_EN_ESPANOL = {
 def generar_grafico_comparacion_imar_bolsa():
     """
     Genera y guarda el grafico comparativo IMAR vs Precio de Bolsa
-    real, del mes vigente (dia 1 hasta hoy, hora Colombia).
+    real, del mes vigente (dia 1 hasta hoy, hora Colombia), con el
+    Precio de Escasez vigente como linea de referencia.
 
     Retorna:
         La ruta del archivo de imagen generado, o None si no hay
@@ -95,16 +103,26 @@ def generar_grafico_comparacion_imar_bolsa():
         label="Precio de Bolsa real"
     )
 
-    ejes.set_title("Evolucion del Precio Promedio - IMAR vs Precio de Bolsa Real (" + nombre_mes + ")", fontsize=13, fontweight="bold")
+    _, valor_escasez = consultar_precio_escasez_mas_reciente()
+    if valor_escasez is not None:
+        ejes.axhline(
+            y=valor_escasez,
+            color=COLOR_ESCASEZ,
+            linestyle=":",
+            linewidth=2,
+            label="Precio de Escasez"
+        )
+
+    ejes.set_title("IMAR vs Precio de Bolsa Real (" + nombre_mes + ")", fontsize=13, fontweight="bold")
     ejes.set_ylabel("Precio promedio diario ($/kWh)")
     ejes.set_xlabel("Dia del mes")
 
     ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d"))
     ejes.xaxis.set_major_locator(mdates.DayLocator())
 
-    ejes.set_ylim(bottom=0)
+    ejes.set_ylim(0, LIMITE_SUPERIOR_EJE_Y)
     ejes.grid(True, linestyle="--", alpha=0.4)
-    ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False)
+    ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False)
 
     figura.tight_layout()
 

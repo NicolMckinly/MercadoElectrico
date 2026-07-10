@@ -5,24 +5,27 @@ Ubicacion: Reportes/generar_informe_diario.py
 Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
 de la especificacion del proyecto).
 
-Estructura del documento (3 paginas):
+Estructura del documento:
 PAGINA 1: Titulo, tarjetas KPI, Resumen del Comportamiento del
-    Mercado, grafico de Evolucion del Precio (mes vigente), y tabla
-    de Estadisticas Detalladas.
+    Mercado, y tabla de Estadisticas Detalladas.
 PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente), grafico
     de Tendencia Anual del Precio de Bolsa, y grafico del IMAR del
-    dia siguiente periodo a periodo. Los tres graficos se muestran
-    en tamano reducido para que quepan juntos en la misma pagina.
+    dia siguiente periodo a periodo.
 PAGINA 3: Tabla del IMAR del dia siguiente, periodo a periodo (con
     Costo WCO GasTY y Costo GE Gas TY, y fila de promedio).
 
+NOTA: el grafico de "Evolucion del Precio - Mes Vigente" (antes en
+la pagina 1) se movio al Informe de Variables Hidrologicas
+(Reportes/generar_informe_hidrologico.py), para que este informe
+diario quepa completo en 3 paginas.
+
 Margenes: izquierdo, derecho e inferior mas angostos (1.0cm) para
 ganar espacio de contenido util en cada pagina. El margen superior
-se mantiene mas amplio (2.6cm) para dejar sitio al logo de la
-empresa, que se dibuja en la esquina superior derecha.
+es de 2.0cm, para dejar sitio al logo de la empresa, que se dibuja
+en la esquina superior derecha.
 
-Todos los textos visibles del PDF (titulos, encabezados de tabla,
-notas, etc.) llevan tildes y ortografia correcta en espanol.
+Todos los textos visibles del PDF llevan tildes y ortografia
+correcta en espanol.
 
 Los valores de Costo WCO GasTY y Costo GE Gas TY son ESTATICOS por
 ahora (se definen como constantes mas abajo, COSTO_WCO_GASTY y
@@ -56,7 +59,6 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from estadisticas_precio import calcular_estadisticas, generar_comentario_automatico
-from grafico_mensual import generar_grafico_mensual
 from grafico_anual import generar_grafico_anual
 from grafico_imar import generar_grafico_imar_siguiente_dia
 from grafico_comparacion_imar_bolsa import generar_grafico_comparacion_imar_bolsa
@@ -82,27 +84,17 @@ COLOR_ACENTO_PROMEDIO = colors.HexColor("#D9822B")
 TAMANO_FUENTE_BASE = 12
 ANCHO_TARJETA = 4.3 * cm
 
-# Margenes de la pagina. Izquierdo/derecho/inferior mas angostos para
-# ganar espacio de contenido; superior mas amplio para dejar sitio al logo.
-MARGEN_SUPERIOR = 1.0 * cm
+MARGEN_SUPERIOR = 2.0 * cm
 MARGEN_INFERIOR = 1.0 * cm
 MARGEN_IZQUIERDO = 1.0 * cm
 MARGEN_DERECHO = 1.0 * cm
 
-# Ancho de pagina carta (letter) es 21.59cm. Restando los margenes
-# izquierdo y derecho, el ancho util de contenido queda en:
 ANCHO_CONTENIDO = 21.59 * cm - MARGEN_IZQUIERDO - MARGEN_DERECHO
 
-# Proporcion real del archivo del logo (ancho x alto en pixeles),
-# para dibujarlo siempre con las proporciones correctas y que no se
-# vea deformado.
 PROPORCION_LOGO = 545 / 1645  # alto / ancho
 ANCHO_LOGO = 2.2 * cm
 ALTO_LOGO = ANCHO_LOGO * PROPORCION_LOGO
 
-# Valores ESTATICOS de las columnas "Costo WCO GasTY" y "Costo GE Gas
-# TY" en la tabla del IMAR. Se actualizan manualmente cambiando estos
-# dos numeros cuando corresponda.
 COSTO_WCO_GASTY = 447.2
 COSTO_GE_GASTY = 497.9
 
@@ -116,9 +108,7 @@ MESES_EN_ESPANOL_LARGO = {
 def _dibujar_logo_en_pagina(canvas_obj, doc):
     """
     Dibuja el logo de la empresa, pequeno tipo membrete, en la esquina
-    superior derecha de la pagina. Se usa como callback "onPage" de
-    SimpleDocTemplate, asi que ReportLab lo llama automaticamente en
-    CADA pagina del PDF (primera y siguientes).
+    superior derecha de la pagina.
     """
     if not os.path.exists(RUTA_LOGO):
         return
@@ -136,9 +126,7 @@ def _dibujar_logo_en_pagina(canvas_obj, doc):
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
     """
-    Crea una tarjeta KPI compacta, con tamano y tipografia uniformes
-    (cerca de 12pt), y una franja de color delgada en la parte
-    superior a modo de acento visual.
+    Crea una tarjeta KPI compacta, con tamano y tipografia uniformes.
     """
     estilo_titulo = ParagraphStyle(
         "TituloTarjeta", fontSize=8.5, textColor=COLOR_TEXTO,
@@ -182,7 +170,6 @@ def generar_informe_diario():
         return None
 
     comentario = generar_comentario_automatico(estadisticas)
-    ruta_grafico_mensual = generar_grafico_mensual()
     ruta_grafico_anual = generar_grafico_anual()
     ruta_grafico_comparacion = generar_grafico_comparacion_imar_bolsa()
     tabla_imar = obtener_tabla_imar_siguiente_dia()
@@ -278,16 +265,6 @@ def generar_informe_diario():
     elementos.append(Paragraph(comentario, estilo_cuerpo))
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico Evolucion del Precio - Mes Vigente ----------
-    seccion_mensual = [Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion)]
-    if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
-        seccion_mensual.append(Image(ruta_grafico_mensual, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (5 / 11)))
-    else:
-        seccion_mensual.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
-    elementos.append(KeepTogether(seccion_mensual))
-
-    elementos.append(Spacer(1, 4))
-
     # ---------- Tabla de Estadisticas Detalladas (version compacta) ----------
     seccion_estadisticas = []
     seccion_estadisticas.append(Paragraph("Estadísticas Detalladas", estilo_seccion))
@@ -335,7 +312,6 @@ def generar_informe_diario():
     # ======================= PAGINA 2 =======================
     elementos.append(PageBreak())
 
-    # ---------- Grafico IMAR vs Precio de Bolsa Real - Mes Vigente ----------
     seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
     if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
         seccion_comparacion.append(Image(ruta_grafico_comparacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
@@ -345,7 +321,6 @@ def generar_informe_diario():
 
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico Tendencia Anual del Precio de Bolsa ----------
     seccion_anual = [Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion)]
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         seccion_anual.append(Image(ruta_grafico_anual, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
@@ -355,7 +330,6 @@ def generar_informe_diario():
 
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico del IMAR del Dia Siguiente ----------
     seccion_imar = [Paragraph("IMAR del Día Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
         seccion_imar.append(Image(ruta_grafico_imar, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.8 / 11)))

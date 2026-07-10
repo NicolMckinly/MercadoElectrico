@@ -5,10 +5,14 @@ Ubicacion: Reportes/generar_informe_diario.py
 Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
 de la especificacion del proyecto): pagina ejecutiva con indicadores,
 comentario automatico, grafico mensual, grafico anual, grafico del
-IMAR del dia siguiente periodo a periodo, tabla de estadisticas, y
-tabla del IMAR del dia siguiente (crudo, ajustado, Costo WCO GasTY y
-Costo GE Gas TY, con fila de promedio al final, y el periodo mas alto
-resaltado en verde y el mas bajo en amarillo).
+IMAR del dia siguiente periodo a periodo, grafico comparativo IMAR
+vs Precio de Bolsa real, tabla de estadisticas, y tabla del IMAR del
+dia siguiente (crudo, ajustado, Costo WCO GasTY y Costo GE Gas TY,
+con fila de promedio al final, y el periodo mas alto resaltado en
+verde y el mas bajo en amarillo).
+
+Todos los textos visibles del PDF (titulos, encabezados de tabla,
+etc.) llevan tildes y ortografia correcta en espanol.
 
 Los valores de Costo WCO GasTY y Costo GE Gas TY son ESTATICOS por
 ahora (se definen como constantes mas abajo, COSTO_WCO_GASTY y
@@ -33,11 +37,6 @@ uniformes cerca de 12pt, y menos espaciado entre secciones. Cada
 titulo de seccion con grafico va envuelto en KeepTogether junto con
 su imagen, para que el titulo nunca quede "huerfano" al final de una
 pagina con la imagen saltando a la siguiente.
-
-El grafico del IMAR se muestra un poco mas grande que los demas
-(usa una proporcion de aspecto mas alta, 6.5/11 en vez de 5.5/11),
-ya que su propio titulo ya incluye la fecha y no necesita un
-encabezado de seccion tan alto encima.
 
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
@@ -65,6 +64,7 @@ from estadisticas_precio import calcular_estadisticas, generar_comentario_automa
 from grafico_mensual import generar_grafico_mensual
 from grafico_anual import generar_grafico_anual
 from grafico_imar import generar_grafico_imar_siguiente_dia
+from grafico_comparacion_imar_bolsa import generar_grafico_comparacion_imar_bolsa
 from tabla_imar_siguiente_dia import obtener_tabla_imar_siguiente_dia
 from base_datos import consultar_precio_escasez_mas_reciente
 from zona_horaria import ahora_colombia
@@ -178,6 +178,7 @@ def generar_informe_diario():
     comentario = generar_comentario_automatico(estadisticas)
     ruta_grafico_mensual = generar_grafico_mensual()
     ruta_grafico_anual = generar_grafico_anual()
+    ruta_grafico_comparacion = generar_grafico_comparacion_imar_bolsa()
     tabla_imar = obtener_tabla_imar_siguiente_dia()
     ruta_grafico_imar = generar_grafico_imar_siguiente_dia(tabla_imar)
     _, valor_escasez = consultar_precio_escasez_mas_reciente()
@@ -279,6 +280,16 @@ def generar_informe_diario():
 
     elementos.append(Spacer(1, 4))
 
+    # ---------- Grafico comparativo IMAR vs Precio de Bolsa real ----------
+    seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
+    if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
+        seccion_comparacion.append(Image(ruta_grafico_comparacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
+    else:
+        seccion_comparacion.append(Paragraph("Grafico no disponible todavia.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_comparacion))
+
+    elementos.append(Spacer(1, 4))
+
     # ---------- Tabla de Estadisticas Detalladas (version compacta) ----------
     seccion_estadisticas = []
     seccion_estadisticas.append(Paragraph("Estadisticas Detalladas", estilo_seccion))
@@ -325,8 +336,7 @@ def generar_informe_diario():
 
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico anual (titulo + imagen agrupados, para que el
-    # titulo nunca quede solo al final de una pagina) ----------
+    # ---------- Grafico anual (titulo + imagen agrupados) ----------
     seccion_anual = [Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion)]
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
         seccion_anual.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
@@ -336,9 +346,7 @@ def generar_informe_diario():
 
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico del IMAR (mas grande, con su titulo agrupado).
-    # Su propio titulo interno ya incluye la fecha (ej. "IMAR 09 Julio
-    # 2026"), asi que el encabezado de seccion aqui es mas breve.
+    # ---------- Grafico del IMAR (mas grande, con su titulo agrupado) ----------
     seccion_imar = [Paragraph("IMAR del Dia Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
         seccion_imar.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (6.5 / 11)))

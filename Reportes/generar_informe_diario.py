@@ -3,13 +3,18 @@ Modulo: generar_informe_diario.py
 Ubicacion: Reportes/generar_informe_diario.py
 
 Genera el informe diario en PDF del Precio de Bolsa (Modulo 1, 6 y 8
-de la especificacion del proyecto): pagina ejecutiva con indicadores,
-comentario automatico, grafico mensual, grafico comparativo IMAR vs
-Precio de Bolsa real, tabla de estadisticas, grafico anual, grafico
-del IMAR del dia siguiente periodo a periodo, y tabla del IMAR del
-dia siguiente (crudo, ajustado, Costo WCO GasTY y Costo GE Gas TY,
-con fila de promedio al final, y el periodo mas alto resaltado en
-verde y el mas bajo en amarillo).
+de la especificacion del proyecto).
+
+Estructura del documento (3 paginas):
+PAGINA 1: Titulo, tarjetas KPI, Resumen del Comportamiento del
+    Mercado, grafico de Evolucion del Precio (mes vigente), y tabla
+    de Estadisticas Detalladas.
+PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente), grafico
+    de Tendencia Anual del Precio de Bolsa, y grafico del IMAR del
+    dia siguiente periodo a periodo. Los tres graficos se muestran
+    en tamano reducido para que quepan juntos en la misma pagina.
+PAGINA 3: Tabla del IMAR del dia siguiente, periodo a periodo (con
+    Costo WCO GasTY y Costo GE Gas TY, y fila de promedio).
 
 Todos los textos visibles del PDF (titulos, encabezados de tabla,
 notas, etc.) llevan tildes y ortografia correcta en espanol.
@@ -22,21 +27,9 @@ numeros cuando corresponda.
 El logo de la empresa se dibuja en la esquina superior derecha de
 TODAS las paginas del documento, en tamano pequeno tipo membrete.
 
-La fecha del titulo se muestra en espanol (usando el diccionario
-MESES_EN_ESPANOL_LARGO), porque el servidor donde corre el sistema
-(GitHub Actions) no tiene instalado el idioma espanol, y usar
-strftime("%B") directamente mostraria el mes en ingles.
-
 La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
 en vez de datetime.now(), para que el nombre del archivo y la fecha
-mostrada en el titulo siempre correspondan a la hora real de Colombia
-y no a la hora UTC del servidor (que va 5 horas adelante).
-
-Diseno compacto: tarjetas KPI mas bajas, tamanos de fuente mas
-uniformes cerca de 12pt, y menos espaciado entre secciones. Cada
-titulo de seccion con grafico va envuelto en KeepTogether junto con
-su imagen, para que el titulo nunca quede "huerfano" al final de una
-pagina con la imagen saltando a la siguiente.
+mostrada en el titulo siempre correspondan a la hora real de Colombia.
 
 Este archivo NO descarga datos ni hace calculos de mercado. Su unica
 responsabilidad es tomar los resultados de los otros modulos y armar
@@ -210,7 +203,7 @@ def generar_informe_diario():
     )
     estilo_seccion = ParagraphStyle(
         "Seccion", parent=estilos["Heading2"],
-        textColor=COLOR_TEXTO, fontSize=12, spaceBefore=10, spaceAfter=4,
+        textColor=COLOR_TEXTO, fontSize=12, spaceBefore=8, spaceAfter=3,
         fontName="Helvetica-Bold"
     )
     estilo_cuerpo = ParagraphStyle(
@@ -225,6 +218,8 @@ def generar_informe_diario():
     )
 
     elementos = []
+
+    # ======================= PAGINA 1 =======================
 
     elementos.append(Paragraph("Informe Diario - Precio de Bolsa Nacional", estilo_titulo_principal))
 
@@ -264,29 +259,19 @@ def generar_informe_diario():
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     elementos.append(fila_tarjetas)
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 8))
 
     elementos.append(Paragraph("Resumen del Comportamiento del Mercado", estilo_seccion))
     elementos.append(Paragraph(comentario, estilo_cuerpo))
-    elementos.append(Spacer(1, 6))
+    elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico mensual (titulo + imagen agrupados) ----------
+    # ---------- Grafico Evolucion del Precio - Mes Vigente ----------
     seccion_mensual = [Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion)]
     if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
-        seccion_mensual.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_mensual.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5 / 11)))
     else:
         seccion_mensual.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_mensual))
-
-    elementos.append(Spacer(1, 4))
-
-    # ---------- Grafico comparativo IMAR vs Precio de Bolsa real ----------
-    seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
-    if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
-        seccion_comparacion.append(Image(ruta_grafico_comparacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
-    else:
-        seccion_comparacion.append(Paragraph("Gráfico no disponible todavía.", estilo_cuerpo))
-    elementos.append(KeepTogether(seccion_comparacion))
 
     elementos.append(Spacer(1, 4))
 
@@ -334,26 +319,40 @@ def generar_informe_diario():
 
     elementos.append(KeepTogether(seccion_estadisticas))
 
+    # ======================= PAGINA 2 =======================
+    elementos.append(PageBreak())
+
+    ANCHO_GRAFICO_PAG2 = 15.5 * cm
+
+    # ---------- Grafico IMAR vs Precio de Bolsa Real - Mes Vigente ----------
+    seccion_comparacion = [Paragraph("IMAR vs Precio de Bolsa Real - Mes Vigente", estilo_seccion)]
+    if ruta_grafico_comparacion is not None and os.path.exists(ruta_grafico_comparacion):
+        seccion_comparacion.append(Image(ruta_grafico_comparacion, width=ANCHO_GRAFICO_PAG2, height=ANCHO_GRAFICO_PAG2 * (4.3 / 11)))
+    else:
+        seccion_comparacion.append(Paragraph("Gráfico no disponible todavía.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_comparacion))
+
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico anual (titulo + imagen agrupados) ----------
+    # ---------- Grafico Tendencia Anual del Precio de Bolsa ----------
     seccion_anual = [Paragraph("Tendencia Anual del Precio de Bolsa", estilo_seccion)]
     if ruta_grafico_anual is not None and os.path.exists(ruta_grafico_anual):
-        seccion_anual.append(Image(ruta_grafico_anual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_anual.append(Image(ruta_grafico_anual, width=ANCHO_GRAFICO_PAG2, height=ANCHO_GRAFICO_PAG2 * (4.3 / 11)))
     else:
         seccion_anual.append(Paragraph("Gráfico anual no disponible todavía.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_anual))
 
     elementos.append(Spacer(1, 4))
 
-    # ---------- Grafico del IMAR (mas grande, con su titulo agrupado) ----------
+    # ---------- Grafico del IMAR del Dia Siguiente ----------
     seccion_imar = [Paragraph("IMAR del Día Siguiente", estilo_seccion)]
     if ruta_grafico_imar is not None and os.path.exists(ruta_grafico_imar):
-        seccion_imar.append(Image(ruta_grafico_imar, width=17 * cm, height=17 * cm * (6.5 / 11)))
+        seccion_imar.append(Image(ruta_grafico_imar, width=ANCHO_GRAFICO_PAG2, height=ANCHO_GRAFICO_PAG2 * (5.0 / 11)))
     else:
         seccion_imar.append(Paragraph("El IMAR del día siguiente aún no está publicado, no hay gráfico disponible.", estilo_cuerpo))
     elementos.append(KeepTogether(seccion_imar))
 
+    # ======================= PAGINA 3 =======================
     elementos.append(PageBreak())
     elementos.append(Paragraph("IMAR del Día Siguiente - Período a Período", estilo_seccion))
 

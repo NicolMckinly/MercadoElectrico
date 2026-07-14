@@ -254,7 +254,7 @@ def generar_informe_hidrologico():
     recopilar_noticias()
     noticias = consultar_noticias_recientes(dias=7)
 
-estilo_item_noticia = ParagraphStyle(
+    estilo_item_noticia = ParagraphStyle(
         "ItemNoticia", parent=estilos["Normal"],
         fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
         fontName="Helvetica", spaceAfter=5

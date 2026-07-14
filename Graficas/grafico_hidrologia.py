@@ -4,12 +4,12 @@ Ubicacion: Graficas/grafico_hidrologia.py
 
 Genera dos graficos para el Modulo 3 (Variables Hidrologicas):
 1. Nivel de Embalse (%) en los ultimos 30 dias disponibles, mostrado
-   como area apilada, junto con la Senda de Referencia (linea
-   punteada, sin cambios).
-2. Caudal (Aportes Hidricos, en GWh/dia) mostrado como area apilada,
-   comparado contra la Media Historica (linea punteada gris) y el
-   porcentaje de Aportes SIN (linea punteada en el eje secundario,
-   sin cambios).
+   como area apilada en azul claro, junto con la Senda de Referencia
+   (linea punteada azul oscuro).
+2. Caudal (Aportes Hidricos, en GWh/dia) mostrado como area apilada
+   en verde claro, comparado contra la Media Historica (linea
+   punteada gris) y el porcentaje de Aportes SIN (linea punteada en
+   el eje secundario, verde oscuro).
 
 Ambos graficos tienen su eje Y siempre partiendo desde 0, para que
 todas las graficas del Informe de Variables Hidrologicas compartan
@@ -33,11 +33,11 @@ from base_datos import consultar_todo_variables_hidrologicas, consultar_todo_sen
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
-COLOR_EMBALSES = "#1F6F50"      # verde, asociado al agua/embalses
-COLOR_SENDA = "#B22222"         # rojo, para la senda de referencia
-COLOR_APORTES = "#2E86C1"       # azul
+COLOR_EMBALSES = "#7FB3D5"      # azul claro, para el area de Nivel de Embalse
+COLOR_SENDA = "#1F4E79"         # azul oscuro, para la senda de referencia
+COLOR_APORTES = "#7DCEA0"       # verde claro, para el area de Caudal
 COLOR_MEDIA_HISTORICA = "#95A5A6"  # gris, para la referencia
-COLOR_PORCENTAJE = "#D9822B"    # naranja, para el eje secundario de %
+COLOR_PORCENTAJE = "#1F6F50"    # verde oscuro, para el eje secundario de %
 
 
 def generar_grafico_embalses():

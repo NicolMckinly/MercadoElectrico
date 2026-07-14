@@ -5,20 +5,25 @@ Ubicacion: Reportes/generar_informe_hidrologico.py
 Genera el informe de Variables Hidrologicas en PDF (Modulo 3 de la
 especificacion del proyecto): resumen ejecutivo con los indicadores
 principales, comentario automatico, los graficos de embalses y
-aportes hidricos, el grafico de Evolucion del Precio de Bolsa (mes
-vigente, trasladado desde el informe diario), y el grafico de
-Generacion por Fuente.
+aportes, el grafico de Generacion por Fuente, el grafico de
+Evolucion del Precio de Bolsa (mes vigente, despues de Generacion
+por Fuente), y las noticias relacionadas.
 
 Este informe se envia unicamente los MARTES y JUEVES, segun la
 especificacion original del proyecto.
+
+Todo el texto del documento usa tamano de fuente uniforme de 12pt,
+incluyendo titulos y encabezados de seccion. Margenes reducidos
+(1.2cm en los 4 lados) y tarjetas KPI mas angostas, para que la
+Tendencia de Embalses y los Aportes Hidricos quepan en la misma
+pagina que el resumen ejecutivo.
 
 La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
 en vez de datetime.now(), para que el nombre del archivo y la fecha
 mostrada en el titulo siempre correspondan a la hora real de Colombia.
 
-Diseno: mismo estilo que el informe diario (Helvetica, tamano 12,
-titulos en negrita, todo en negro), con tarjetas KPI de tamano
-uniforme y un acento de color en la parte superior de cada una.
+Todos los textos visibles del PDF llevan tildes y ortografia
+correcta en espanol.
 """
 
 import sys
@@ -28,7 +33,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, KeepTogether
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
@@ -60,7 +65,10 @@ COLOR_ACENTO_VARIACION = colors.HexColor("#1F4E79")
 COLOR_ACENTO_APORTES = colors.HexColor("#D9822B")
 
 TAMANO_FUENTE_BASE = 12
-ANCHO_TARJETA = 5.4 * cm
+ANCHO_TARJETA = 4.2 * cm
+
+MARGEN = 1.2 * cm
+ANCHO_CONTENIDO = 21.59 * cm - (MARGEN * 2)
 
 MESES_EN_ESPANOL_LARGO = {
     1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
@@ -71,20 +79,20 @@ MESES_EN_ESPANOL_LARGO = {
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
     """
-    Crea una tarjeta KPI con tamano y tipografia uniformes, y una
+    Crea una tarjeta KPI compacta (fuente uniforme de 12pt), con una
     franja de color en la parte superior a modo de acento visual.
     """
     estilo_titulo = ParagraphStyle(
-        "TituloTarjetaH", fontSize=10, textColor=COLOR_TEXTO,
-        alignment=TA_CENTER, spaceAfter=4, fontName="Helvetica-Bold",
-        leading=13
+        "TituloTarjetaH", fontSize=TAMANO_FUENTE_BASE, textColor=COLOR_TEXTO,
+        alignment=TA_CENTER, spaceAfter=3, fontName="Helvetica-Bold",
+        leading=14
     )
     estilo_valor = ParagraphStyle(
-        "ValorTarjetaH", fontSize=18, textColor=color_acento,
+        "ValorTarjetaH", fontSize=TAMANO_FUENTE_BASE, textColor=color_acento,
         alignment=TA_CENTER, fontName="Helvetica-Bold"
     )
 
-    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.25 * cm])
+    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.2 * cm])
     franja_acento.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), color_acento),
     ]))
@@ -95,13 +103,13 @@ def _crear_tarjeta_kpi(titulo, valor, color_acento):
         [Paragraph(valor, estilo_valor)]
     ]
 
-    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.25 * cm, 1.3 * cm, 1.4 * cm])
+    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.2 * cm, 1.0 * cm, 0.9 * cm])
     tabla.setStyle(TableStyle([
         ("SPAN", (0, 0), (0, 0)),
         ("BACKGROUND", (0, 1), (-1, -1), COLOR_FONDO_TARJETA),
         ("BOX", (0, 0), (-1, -1), 0.75, COLOR_BORDE),
-        ("TOPPADDING", (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
 
@@ -134,32 +142,32 @@ def generar_informe_hidrologico():
     documento = SimpleDocTemplate(
         ruta_pdf,
         pagesize=letter,
-        topMargin=1.5 * cm,
-        bottomMargin=1.5 * cm,
-        leftMargin=1.5 * cm,
-        rightMargin=1.5 * cm
+        topMargin=MARGEN,
+        bottomMargin=MARGEN,
+        leftMargin=MARGEN,
+        rightMargin=MARGEN
     )
 
     estilos = getSampleStyleSheet()
 
     estilo_titulo_principal = ParagraphStyle(
         "TituloPrincipalH", parent=estilos["Title"],
-        textColor=COLOR_TEXTO, fontSize=20, spaceAfter=4,
+        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceAfter=3,
         fontName="Helvetica-Bold"
     )
     estilo_subtitulo = ParagraphStyle(
         "SubtituloH", parent=estilos["Normal"],
-        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceAfter=16,
+        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceAfter=8,
         fontName="Helvetica"
     )
     estilo_seccion = ParagraphStyle(
         "SeccionH", parent=estilos["Heading2"],
-        textColor=COLOR_TEXTO, fontSize=14, spaceBefore=18, spaceAfter=8,
+        textColor=COLOR_TEXTO, fontSize=TAMANO_FUENTE_BASE, spaceBefore=8, spaceAfter=4,
         fontName="Helvetica-Bold"
     )
     estilo_cuerpo = ParagraphStyle(
         "CuerpoH", parent=estilos["Normal"],
-        fontSize=TAMANO_FUENTE_BASE, leading=16, textColor=COLOR_TEXTO,
+        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
         fontName="Helvetica"
     )
 
@@ -190,48 +198,57 @@ def generar_informe_hidrologico():
 
     fila_tarjetas = Table(
         [[tarjeta_embalses, tarjeta_variacion_embalses, tarjeta_aportes]],
-        colWidths=[5.7 * cm] * 3
+        colWidths=[4.4 * cm] * 3
     )
     fila_tarjetas.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
     elementos.append(fila_tarjetas)
-    elementos.append(Spacer(1, 18))
+    elementos.append(Spacer(1, 8))
 
     elementos.append(Paragraph("Resumen del Comportamiento Hidrológico", estilo_seccion))
     elementos.append(Paragraph(comentario, estilo_cuerpo))
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 4))
 
-    elementos.append(Paragraph("Tendencia de Embalses", estilo_seccion))
+    # ---------- Tendencia de Embalses ----------
+    seccion_embalses = [Paragraph("Tendencia de Embalses", estilo_seccion)]
     if ruta_grafico_embalses is not None and os.path.exists(ruta_grafico_embalses):
-        elementos.append(Image(ruta_grafico_embalses, width=17 * cm, height=17 * cm * (5 / 11)))
+        seccion_embalses.append(Image(ruta_grafico_embalses, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     else:
-        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+        seccion_embalses.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_embalses))
 
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 4))
 
-    elementos.append(Paragraph("Aportes Hídricos SIN vs Media Histórica", estilo_seccion))
+    # ---------- Aportes Hidricos SIN vs Media Historica ----------
+    seccion_aportes = [Paragraph("Aportes Hídricos SIN vs Media Histórica", estilo_seccion)]
     if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
-        elementos.append(Image(ruta_grafico_aportes, width=17 * cm, height=17 * cm * (5 / 11)))
+        seccion_aportes.append(Image(ruta_grafico_aportes, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     else:
-        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+        seccion_aportes.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_aportes))
 
-    elementos.append(Spacer(1, 10))
+    # ======================= PAGINA 2 =======================
+    elementos.append(PageBreak())
 
-    elementos.append(Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion))
-    if ruta_grafico_precio_mensual is not None and os.path.exists(ruta_grafico_precio_mensual):
-        elementos.append(Image(ruta_grafico_precio_mensual, width=17 * cm, height=17 * cm * (5 / 11)))
-    else:
-        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
-
-    elementos.append(Spacer(1, 10))
-
-    elementos.append(Paragraph("Generación por Fuente", estilo_seccion))
+    # ---------- Generacion por Fuente ----------
+    seccion_generacion = [Paragraph("Generación por Fuente", estilo_seccion)]
     if ruta_grafico_generacion is not None and os.path.exists(ruta_grafico_generacion):
-        elementos.append(Image(ruta_grafico_generacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_generacion.append(Image(ruta_grafico_generacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.6 / 11)))
     else:
-        elementos.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+        seccion_generacion.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_generacion))
+
+    elementos.append(Spacer(1, 4))
+
+    # ---------- Evolucion del Precio - Mes Vigente ----------
+    seccion_precio = [Paragraph("Evolución del Precio - Mes Vigente", estilo_seccion)]
+    if ruta_grafico_precio_mensual is not None and os.path.exists(ruta_grafico_precio_mensual):
+        seccion_precio.append(Image(ruta_grafico_precio_mensual, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
+    else:
+        seccion_precio.append(Paragraph("Gráfico no disponible.", estilo_cuerpo))
+    elementos.append(KeepTogether(seccion_precio))
 
     # ---------- Noticias (Modulo 5) ----------
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 6))
     elementos.append(Paragraph("Noticias Relacionadas (últimos 7 días)", estilo_seccion))
 
     recopilar_noticias()
@@ -239,13 +256,13 @@ def generar_informe_hidrologico():
 
     estilo_nota_noticias = ParagraphStyle(
         "NotaNoticias", parent=estilos["Normal"],
-        fontSize=9, leading=12, textColor=COLOR_TEXTO,
-        fontName="Helvetica-Oblique", spaceAfter=8
+        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
+        fontName="Helvetica-Oblique", spaceAfter=6
     )
     estilo_item_noticia = ParagraphStyle(
         "ItemNoticia", parent=estilos["Normal"],
-        fontSize=10, leading=14, textColor=COLOR_TEXTO,
-        fontName="Helvetica", spaceAfter=6
+        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
+        fontName="Helvetica", spaceAfter=5
     )
 
     elementos.append(Paragraph(

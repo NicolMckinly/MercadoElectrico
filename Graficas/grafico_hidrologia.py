@@ -3,15 +3,17 @@ Modulo: grafico_hidrologia.py
 Ubicacion: Graficas/grafico_hidrologia.py
 
 Genera dos graficos para el Modulo 3 (Variables Hidrologicas):
-1. Tendencia de Embalses (% de capacidad util) en los ultimos 30 dias
-   disponibles.
-2. Aportes Hidricos comparados contra la Media Historica, en los
-   ultimos 30 dias disponibles.
+1. Nivel de Embalse (%) en los ultimos 30 dias disponibles, mostrado
+   como area apilada, junto con la Senda de Referencia (linea
+   punteada, sin cambios).
+2. Caudal (Aportes Hidricos, en GWh/dia) mostrado como area apilada,
+   comparado contra la Media Historica (linea punteada gris) y el
+   porcentaje de Aportes SIN (linea punteada en el eje secundario,
+   sin cambios).
 
-Ambos graficos (incluyendo el eje secundario de porcentaje en el de
-aportes) tienen su eje Y siempre partiendo desde 0, para que todas
-las graficas del Informe de Variables Hidrologicas compartan la
-misma base visual.
+Ambos graficos tienen su eje Y siempre partiendo desde 0, para que
+todas las graficas del Informe de Variables Hidrologicas compartan
+la misma base visual.
 
 Los graficos se guardan como imagenes .png dentro de esta misma carpeta.
 """
@@ -40,9 +42,9 @@ COLOR_PORCENTAJE = "#D9822B"    # naranja, para el eje secundario de %
 
 def generar_grafico_embalses():
     """
-    Genera el grafico de tendencia de Embalses (%) de los ultimos
-    30 dias disponibles, junto con la Senda de Referencia vigente
-    (Resolucion CREG 209 de 2020) en la misma grafica.
+    Genera el grafico de Nivel de Embalse (%) de los ultimos 30 dias
+    disponibles, como area apilada, junto con la Senda de Referencia
+    vigente (Resolucion CREG 209 de 2020) como linea punteada.
 
     Retorna:
         La ruta del archivo generado, o None si no hay datos.
@@ -61,7 +63,7 @@ def generar_grafico_embalses():
 
     figura, ejes = plt.subplots(figsize=(11, 5))
 
-    ejes.plot(datos["fecha_dt"], datos["embalses_pct"], "o-", color=COLOR_EMBALSES, linewidth=2, markersize=4, label="Embalse SIN (%)")
+    ejes.stackplot(datos["fecha_dt"], datos["embalses_pct"], colors=[COLOR_EMBALSES], alpha=0.85, labels=["Embalse SIN (%)"])
 
     if len(senda) > 0:
         senda = senda.copy()
@@ -95,8 +97,10 @@ def generar_grafico_embalses():
 
 def generar_grafico_aportes():
     """
-    Genera el grafico de Aportes Hidricos vs Media Historica, de los
-    ultimos 30 dias disponibles.
+    Genera el grafico de Caudal (Aportes Hidricos, GWh/dia) como
+    area apilada, comparado contra la Media Historica (linea
+    punteada gris) y el porcentaje de Aportes SIN (linea punteada
+    en el eje secundario).
 
     Retorna:
         La ruta del archivo generado, o None si no hay datos.
@@ -118,7 +122,7 @@ def generar_grafico_aportes():
 
     figura, ejes = plt.subplots(figsize=(11, 5))
 
-    ejes.plot(datos["fecha_dt"], datos["aportes_gwh"], "o-", color=COLOR_APORTES, linewidth=2, markersize=4, label="Aportes SIN (GWh/dia)")
+    ejes.stackplot(datos["fecha_dt"], datos["aportes_gwh"], colors=[COLOR_APORTES], alpha=0.85, labels=["Caudal GWh/día"])
     ejes.plot(datos["fecha_dt"], datos["media_historica_gwh"], "--", color=COLOR_MEDIA_HISTORICA, linewidth=2, label="Media Historica (GWh/dia)")
 
     ejes.set_title("Aportes SIN", fontsize=13, fontweight="bold")

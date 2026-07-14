@@ -248,20 +248,19 @@ def generar_informe_hidrologico():
     elementos.append(KeepTogether(seccion_precio))
 
     # ---------- Noticias (Modulo 5) ----------
-    elementos.append(Spacer(1, 6))
-    elementos.append(Paragraph("Noticias Relacionadas (últimos 7 días)", estilo_seccion))
-
     recopilar_noticias()
     noticias = consultar_noticias_recientes(dias=7)
 
     estilo_item_noticia = ParagraphStyle(
         "ItemNoticia", parent=estilos["Normal"],
-        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
-        fontName="Helvetica", spaceAfter=5
+        fontSize=11, leading=13, textColor=COLOR_TEXTO,
+        fontName="Helvetica", spaceAfter=4
     )
 
+    seccion_noticias = [Spacer(1, 6), Paragraph("Noticias Relacionadas (últimos 7 días)", estilo_seccion)]
+
     if len(noticias) == 0:
-        elementos.append(Paragraph("No se encontraron noticias recientes relacionadas.", estilo_cuerpo))
+        seccion_noticias.append(Paragraph("No se encontraron noticias recientes relacionadas.", estilo_cuerpo))
     else:
         for _, noticia in noticias.head(10).iterrows():
             texto_item = (
@@ -269,7 +268,9 @@ def generar_informe_hidrologico():
                 + noticia["titulo"] + " (" + noticia["fuente"] + ") - "
                 + "<link href='" + noticia["enlace"] + "' color='blue'>Ver noticia</link>"
             )
-            elementos.append(Paragraph(texto_item, estilo_item_noticia))
+            seccion_noticias.append(Paragraph(texto_item, estilo_item_noticia))
+
+    elementos.append(KeepTogether(seccion_noticias))
 
     documento.build(elementos)
 

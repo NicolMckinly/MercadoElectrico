@@ -8,6 +8,11 @@ Genera dos graficos para el Modulo 3 (Variables Hidrologicas):
 2. Aportes Hidricos comparados contra la Media Historica, en los
    ultimos 30 dias disponibles.
 
+Ambos graficos (incluyendo el eje secundario de porcentaje en el de
+aportes) tienen su eje Y siempre partiendo desde 0, para que todas
+las graficas del Informe de Variables Hidrologicas compartan la
+misma base visual.
+
 Los graficos se guardan como imagenes .png dentro de esta misma carpeta.
 """
 
@@ -76,6 +81,7 @@ def generar_grafico_embalses():
     ejes.set_xlabel("Fecha")
     ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b"))
     ejes.grid(True, linestyle="--", alpha=0.4)
+    ejes.set_ylim(bottom=0)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False)
 
     figura.tight_layout()
@@ -120,11 +126,13 @@ def generar_grafico_aportes():
     ejes.set_xlabel("Fecha")
     ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b"))
     ejes.grid(True, linestyle="--", alpha=0.4)
+    ejes.set_ylim(bottom=0)
 
     # Eje secundario para el porcentaje, ya que se mide en una escala distinta
     ejes_pct = ejes.twinx()
     ejes_pct.plot(datos["fecha_dt"], datos["aportes_pct"], "o:", color=COLOR_PORCENTAJE, linewidth=1.8, markersize=4, label="Aportes SIN (%)")
     ejes_pct.set_ylabel("Aportes SIN (%)")
+    ejes_pct.set_ylim(bottom=0)
 
     # Combinamos las leyendas de ambos ejes en una sola
     lineas_1, etiquetas_1 = ejes.get_legend_handles_labels()

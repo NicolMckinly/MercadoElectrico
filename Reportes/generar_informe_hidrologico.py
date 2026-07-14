@@ -254,23 +254,11 @@ def generar_informe_hidrologico():
     recopilar_noticias()
     noticias = consultar_noticias_recientes(dias=7)
 
-    estilo_nota_noticias = ParagraphStyle(
-        "NotaNoticias", parent=estilos["Normal"],
-        fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
-        fontName="Helvetica-Oblique", spaceAfter=6
-    )
-    estilo_item_noticia = ParagraphStyle(
+estilo_item_noticia = ParagraphStyle(
         "ItemNoticia", parent=estilos["Normal"],
         fontSize=TAMANO_FUENTE_BASE, leading=15, textColor=COLOR_TEXTO,
         fontName="Helvetica", spaceAfter=5
     )
-
-    elementos.append(Paragraph(
-        "Los siguientes son titulares recientes recopilados automáticamente de fuentes públicas, "
-        "sin ninguna interpretación generada por el sistema. Para el análisis completo de cada "
-        "noticia, consulte el enlace original.",
-        estilo_nota_noticias
-    ))
 
     if len(noticias) == 0:
         elementos.append(Paragraph("No se encontraron noticias recientes relacionadas.", estilo_cuerpo))

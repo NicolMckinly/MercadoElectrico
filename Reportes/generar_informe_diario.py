@@ -376,7 +376,7 @@ def generar_informe_diario():
         datos_tabla_imar = [[
             Paragraph("Período", estilo_celda_encabezado_imar),
             Paragraph("IMAR", estilo_celda_encabezado_imar),
-            Paragraph("IMAR Ajustado", estilo_celda_encabezado_imar),
+            Paragraph("PB Proyectado TMM", estilo_celda_encabezado_imar),
             Paragraph("Costo WCO GasTY", estilo_celda_encabezado_imar),
             Paragraph("Costo GE Gas TY", estilo_celda_encabezado_imar)
         ]]

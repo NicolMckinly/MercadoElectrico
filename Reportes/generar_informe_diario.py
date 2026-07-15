@@ -12,7 +12,9 @@ PAGINA 1: Titulo, tarjetas KPI, Resumen del Comportamiento del
 PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente) y
     grafico del IMAR del dia siguiente periodo a periodo.
 PAGINA 3: Tabla del IMAR del dia siguiente, periodo a periodo (con
-    Costo WCO GasTY y Costo GE Gas TY, y fila de promedio).
+    Costo WCO GasTY y Costo GE Gas TY, y fila de promedio). La
+    columna que antes decia "IMAR Ajustado" ahora se llama
+    "PB Proyectado TMM".
 
 NOTA: el grafico de "Evolucion del Precio - Mes Vigente" (antes en
 la pagina 1) se movio al Informe de Variables Hidrologicas

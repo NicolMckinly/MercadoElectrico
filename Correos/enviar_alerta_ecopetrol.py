@@ -10,6 +10,12 @@ Este correo es independiente del Informe del Mercado de Gas
 (Reportes/generar_informe_gas.py) y del Resumen Ejecutivo Quincenal:
 avisa UNICAMENTE cuando Ecopetrol publica algo nuevo, sin graficos
 ni tendencias, para que sea una alerta rapida de "revisa esto".
+
+El mensaje de apertura es formal, y se ajusta automaticamente segun
+si se detecto una sola convocatoria o varias.
+
+Se envia tambien a Andrea Quintero (destinataria adicional), ademas
+del correo principal configurado en el .env.
 """
 import sys
 import os
@@ -18,6 +24,11 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "API"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 from monitor_ecopetrol import buscar_convocatorias_nuevas
 from enviar_correo import enviar_informe_por_correo
+
+# Destinatarios adicionales que reciben esta alerta, ademas del
+# correo principal configurado en el .env.
+CORREOS_ADICIONALES_ECOPETROL = ["andrea.quintero@tmmorro.com"]
+
 def _construir_cuerpo_del_correo(convocatorias):
     """
     Arma el texto del correo con el detalle de cada convocatoria
@@ -25,7 +36,10 @@ def _construir_cuerpo_del_correo(convocatorias):
     extraer automaticamente de la pagina de Ecopetrol (Fuente,
     Cantidad, Modalidad, Plazo, Garantia, Fecha de publicacion).
     """
-    partes = ["Hey, salio " + str(len(convocatorias)) + " nueva(s) convocatoria(s) de gas natural en Ecopetrol. Ve a revisar:\n"]
+    if len(convocatorias) == 1:
+        partes = ["Se detectó una nueva convocatoria de gas natural en Ecopetrol. A continuación encontrará los detalles:\n"]
+    else:
+        partes = ["Se detectaron " + str(len(convocatorias)) + " nuevas convocatorias de gas natural en Ecopetrol. A continuación encontrará los detalles:\n"]
     for convocatoria in convocatorias:
         partes.append("=" * 60)
         partes.append(convocatoria["titulo"])
@@ -59,7 +73,8 @@ def revisar_y_enviar_alerta_ecopetrol():
     enviar_informe_por_correo(
         None,
         "Nueva(s) convocatoria(s) de Gas Natural - Ecopetrol",
-        cuerpo
+        cuerpo,
+        destinatarios_extra=CORREOS_ADICIONALES_ECOPETROL
     )
     return len(nuevas)
 if __name__ == "__main__":

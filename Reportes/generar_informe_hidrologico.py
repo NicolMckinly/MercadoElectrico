@@ -9,8 +9,11 @@ aportes, el grafico de Generacion por Fuente, el grafico de
 Evolucion del Precio de Bolsa (mes vigente, despues de Generacion
 por Fuente), y las noticias relacionadas.
 
-Este informe se envia unicamente los MARTES y JUEVES, segun la
-especificacion original del proyecto.
+Este informe se envia unicamente los MIERCOLES, segun la ultima
+especificacion del proyecto.
+
+El titulo mostrado en el PDF es simplemente "Informe de Variables"
+(sin el "Hidrologicas" al final).
 
 Todo el texto del documento usa tamano de fuente uniforme de 12pt,
 incluyendo titulos y encabezados de seccion. Margenes reducidos
@@ -203,7 +206,7 @@ def generar_informe_hidrologico():
 
     elementos = []
 
-    elementos.append(Paragraph("Informe de Variables Hidrológicas", estilo_titulo_principal))
+    elementos.append(Paragraph("Informe de Variables", estilo_titulo_principal))
 
     fecha_en_espanol = hoy.strftime("%d") + " de " + MESES_EN_ESPANOL_LARGO[hoy.month] + " de " + str(hoy.year)
     elementos.append(Paragraph(fecha_en_espanol, estilo_subtitulo))

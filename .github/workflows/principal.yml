@@ -79,18 +79,18 @@ jobs:
       - name: Ejecutar proceso diario
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python main_diario.py
-      # Paso 7: Ejecuta el proceso hidrologico (Modulo 3, 4 y 5), pero
-      # solo los martes y jueves, entre las 8:00 AM y las 12:00 PM
-      # hora Colombia. Esta condicion es independiente y mas
-      # restrictiva que la ventana general, asi que sigue aplicando
-      # igual dentro del rango permitido arriba.
-      - name: Ejecutar proceso hidrologico (martes y jueves)
+      # Paso 7: Ejecuta el proceso hidrologico (Modulo 3), pero solo
+      # los MIERCOLES, entre las 8:00 AM y las 12:00 PM hora Colombia.
+      # Esta condicion es independiente y mas restrictiva que la
+      # ventana general, asi que sigue aplicando igual dentro del
+      # rango permitido arriba.
+      - name: Ejecutar proceso hidrologico (miercoles)
         if: steps.ventana.outputs.ejecutar == 'true'
         run: |
           DIA=$(date -u +%u)
           HORA=$(date -u +%H)
-          if { [ "$DIA" = "2" ] || [ "$DIA" = "4" ]; } && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
-            echo "Es martes o jueves, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
+          if [ "$DIA" = "3" ] && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
+            echo "Es miercoles, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
             python main_hidrologico.py
           else
             echo "No corresponde ejecutar el proceso hidrologico en este momento."

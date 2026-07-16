@@ -18,6 +18,10 @@ incluyendo titulos y encabezados de seccion. Margenes reducidos
 Tendencia de Embalses y los Aportes Hidricos quepan en la misma
 pagina que el resumen ejecutivo.
 
+El logo de la empresa se dibuja en la esquina superior derecha de
+TODAS las paginas del documento, en tamano pequeno tipo membrete
+(mismo estilo que el informe diario).
+
 La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
 en vez de datetime.now(), para que el nombre del archivo y la fecha
 mostrada en el titulo siempre correspondan a la hora real de Colombia.
@@ -54,6 +58,7 @@ from noticias import recopilar_noticias
 from base_datos import consultar_noticias_recientes
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
+RUTA_LOGO = os.path.join(CARPETA_PROYECTO, "Reportes", "logo_termomorro.png")
 
 COLOR_TEXTO = colors.black
 COLOR_FONDO_ENCABEZADO_TABLA = colors.HexColor("#333333")
@@ -70,11 +75,36 @@ ANCHO_TARJETA = 4.2 * cm
 MARGEN = 1.2 * cm
 ANCHO_CONTENIDO = 21.59 * cm - (MARGEN * 2)
 
+PROPORCION_LOGO = 545 / 1645  # alto / ancho
+ANCHO_LOGO = 2.2 * cm
+ALTO_LOGO = ANCHO_LOGO * PROPORCION_LOGO
+
 MESES_EN_ESPANOL_LARGO = {
     1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
     5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
     9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
 }
+
+
+def _dibujar_logo_en_pagina(canvas_obj, doc):
+    """
+    Dibuja el logo de la empresa, pequeno tipo membrete, en la esquina
+    superior derecha de la pagina. Se usa como callback "onPage" de
+    SimpleDocTemplate, asi que ReportLab lo llama automaticamente en
+    CADA pagina del PDF (primera y siguientes).
+    """
+    if not os.path.exists(RUTA_LOGO):
+        return
+
+    ancho_pagina, alto_pagina = doc.pagesize
+    x = ancho_pagina - doc.rightMargin - ANCHO_LOGO
+    y = alto_pagina - 1.0 * cm - ALTO_LOGO
+
+    canvas_obj.drawImage(
+        RUTA_LOGO, x, y,
+        width=ANCHO_LOGO, height=ALTO_LOGO,
+        preserveAspectRatio=True, mask="auto"
+    )
 
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
@@ -272,7 +302,11 @@ def generar_informe_hidrologico():
 
     elementos.append(KeepTogether(seccion_noticias))
 
-    documento.build(elementos)
+    documento.build(
+        elementos,
+        onFirstPage=_dibujar_logo_en_pagina,
+        onLaterPages=_dibujar_logo_en_pagina
+    )
 
     print("Informe hidrológico generado: " + ruta_pdf)
     return ruta_pdf

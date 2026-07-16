@@ -7,13 +7,22 @@ especificacion original), que junta en un solo documento: Precio de
 Bolsa, Precio de Escasez, Embalses, Aportes, Generacion por Fuente,
 Noticias y Alertas, terminando con una conclusion automatica.
 
+Todas las graficas de este informe muestran una ventana de 12 MESES
+MOVILES: desde ayer (dia n-1, ultimo dia con datos publicados) hacia
+atras 365 dias. Esta ventana se recalcula automaticamente cada vez
+que se genera el informe, asi que avanza sola dia a dia y mes a mes,
+sin necesidad de ajustar nada manualmente.
+
 Este informe se envia cada 15 dias (no diario ni semanal), segun lo
 pedido por el usuario.
+
+La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
+en vez de datetime.now(), para que el nombre del archivo y la fecha
+mostrada en el titulo siempre correspondan a la hora real de Colombia.
 """
 
 import sys
 import os
-from datetime import datetime
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
@@ -27,11 +36,13 @@ from reportlab.lib.enums import TA_CENTER
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
+sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
 from resumen_ejecutivo import generar_resumen_ejecutivo
-from grafico_mensual import generar_grafico_mensual
-from grafico_hidrologia import generar_grafico_embalses, generar_grafico_aportes
-from grafico_generacion import generar_grafico_generacion
+from grafico_precio_anual_ejecutivo import generar_grafico_precio_anual_ejecutivo
+from grafico_hidrologia import generar_grafico_embalses_anual_ejecutivo, generar_grafico_aportes_anual_ejecutivo
+from grafico_generacion import generar_grafico_generacion_anual_ejecutivo
+from zona_horaria import ahora_colombia
 
 CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,6 +56,12 @@ COLOR_ACENTO_EMBALSES = colors.HexColor("#1F6F50")
 COLOR_ACENTO_ALERTAS = colors.HexColor("#D9822B")
 
 ANCHO_TARJETA = 4.3 * cm
+
+MESES_EN_ESPANOL_LARGO = {
+    1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
+    5: "mayo", 6: "junio", 7: "julio", 8: "agosto",
+    9: "septiembre", 10: "octubre", 11: "noviembre", 12: "diciembre",
+}
 
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
@@ -87,12 +104,12 @@ def generar_informe_ejecutivo():
         print("No hay datos suficientes para generar el resumen ejecutivo.")
         return None
 
-    ruta_grafico_mensual = generar_grafico_mensual()
-    ruta_grafico_embalses = generar_grafico_embalses()
-    ruta_grafico_aportes = generar_grafico_aportes()
-    ruta_grafico_generacion = generar_grafico_generacion()
+    ruta_grafico_precio = generar_grafico_precio_anual_ejecutivo()
+    ruta_grafico_embalses = generar_grafico_embalses_anual_ejecutivo()
+    ruta_grafico_aportes = generar_grafico_aportes_anual_ejecutivo()
+    ruta_grafico_generacion = generar_grafico_generacion_anual_ejecutivo()
 
-    hoy = datetime.now()
+    hoy = ahora_colombia()
     nombre_archivo = "Resumen_Ejecutivo_" + hoy.strftime("%Y_%m_%d") + ".pdf"
     ruta_pdf = os.path.join(CARPETA_ACTUAL, nombre_archivo)
 
@@ -131,7 +148,8 @@ def generar_informe_ejecutivo():
     elementos = []
 
     elementos.append(Paragraph("Resumen Ejecutivo Quincenal", estilo_titulo_principal))
-    elementos.append(Paragraph("Mercado Electrico Colombiano - " + hoy.strftime("%d de %B de %Y"), estilo_subtitulo))
+    fecha_en_espanol = hoy.strftime("%d") + " de " + MESES_EN_ESPANOL_LARGO[hoy.month] + " de " + str(hoy.year)
+    elementos.append(Paragraph("Mercado Eléctrico Colombiano - " + fecha_en_espanol, estilo_subtitulo))
 
     ep = resumen["estadisticas_precio"]
     eh = resumen["estadisticas_hidro"]
@@ -154,30 +172,30 @@ def generar_informe_ejecutivo():
     elementos.append(fila_tarjetas)
     elementos.append(Spacer(1, 16))
 
-    elementos.append(Paragraph("Precio de Bolsa y Precio de Escasez", estilo_seccion))
-    if ruta_grafico_mensual is not None and os.path.exists(ruta_grafico_mensual):
-        elementos.append(Image(ruta_grafico_mensual, width=17 * cm, height=17 * cm * (5.5 / 11)))
+    elementos.append(Paragraph("Precio de Bolsa y Precio de Escasez - Últimos 12 Meses", estilo_seccion))
+    if ruta_grafico_precio is not None and os.path.exists(ruta_grafico_precio):
+        elementos.append(Image(ruta_grafico_precio, width=17 * cm, height=17 * cm * (5.5 / 11)))
 
     elementos.append(PageBreak())
 
-    elementos.append(Paragraph("Embalses", estilo_seccion))
+    elementos.append(Paragraph("Embalses - Últimos 12 Meses", estilo_seccion))
     if ruta_grafico_embalses is not None and os.path.exists(ruta_grafico_embalses):
         elementos.append(Image(ruta_grafico_embalses, width=17 * cm, height=17 * cm * (5 / 11)))
 
     elementos.append(Spacer(1, 10))
-    elementos.append(Paragraph("Aportes Hidricos", estilo_seccion))
+    elementos.append(Paragraph("Aportes Hídricos - Últimos 12 Meses", estilo_seccion))
     if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
         elementos.append(Image(ruta_grafico_aportes, width=17 * cm, height=17 * cm * (5 / 11)))
 
     elementos.append(PageBreak())
 
-    elementos.append(Paragraph("Generacion por Fuente", estilo_seccion))
+    elementos.append(Paragraph("Generación por Fuente - Últimos 12 Meses", estilo_seccion))
     if ruta_grafico_generacion is not None and os.path.exists(ruta_grafico_generacion):
         elementos.append(Image(ruta_grafico_generacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
 
     if len(resumen["noticias"]) > 0:
         elementos.append(Spacer(1, 10))
-        elementos.append(Paragraph("Noticias Relacionadas (ultimos 15 dias)", estilo_seccion))
+        elementos.append(Paragraph("Noticias Relacionadas (últimos 15 días)", estilo_seccion))
 
         for _, noticia in resumen["noticias"].head(8).iterrows():
             texto_item = (
@@ -195,7 +213,7 @@ def generar_informe_ejecutivo():
             elementos.append(Paragraph("- " + alerta["mensaje"], estilo_cuerpo))
 
     elementos.append(Spacer(1, 14))
-    elementos.append(Paragraph("Conclusion", estilo_seccion))
+    elementos.append(Paragraph("Conclusión", estilo_seccion))
     elementos.append(Paragraph(resumen["conclusion"], estilo_conclusion))
 
     documento.build(elementos)

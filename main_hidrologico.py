@@ -15,6 +15,10 @@ gracias al cron externo). Apenas XM publica los datos del dia
 anterior, se genera y envia el informe UNA SOLA VEZ ese dia; si XM
 aun no ha publicado, se vuelve a intentar en la siguiente revision.
 
+Este informe se envia tambien a destinatarios adicionales (Andrea
+Quintero y Fabian Barahona), ademas del correo principal configurado
+en el .env.
+
 Usa ahora_colombia() (ver BaseDatos/zona_horaria.py) en vez de
 datetime.now(), para que el sistema siempre use la hora real de
 Colombia y no la hora UTC del servidor (que va 5 horas adelante).
@@ -32,6 +36,10 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Reportes"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 
 from zona_horaria import ahora_colombia
+
+# Destinatarios adicionales que reciben UNICAMENTE el informe
+# hidrologico, ademas del correo principal configurado en el .env.
+CORREOS_ADICIONALES_HIDROLOGICO = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com"]
 
 
 def ejecutar_proceso_hidrologico():
@@ -96,7 +104,8 @@ def ejecutar_proceso_hidrologico():
             enviado = enviar_informe_por_correo(
                 ruta_informe,
                 "Informe de Variables Hidrologicas",
-                "Adjunto encontraras el informe de variables hidrologicas, generado automaticamente."
+                "Adjunto encontraras el informe de variables hidrologicas, generado automaticamente.",
+                destinatarios_extra=CORREOS_ADICIONALES_HIDROLOGICO
             )
             if enviado:
                 marcar_enviado_hoy("hidrologico")

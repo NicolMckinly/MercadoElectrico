@@ -1,52 +1,27 @@
 name: Sistema Mercado Electrico
-# Este workflow se dispara desde un servicio externo (cron-job.org)
-# cada 15 minutos, de 8:00 AM a 5:00 PM hora Colombia, TODOS los
-# dias (incluye fines de semana y festivos), usando "workflow_dispatch".
-#
-# Sin embargo, el sistema NO debe correr todo ese rango todos los
-# dias: solo los dias habiles (lunes a viernes, sin festivos
-# colombianos) debe correr de 8:00 AM a 5:00 PM. Los fines de semana
-# y festivos, solo debe correr de 9:00 AM a 12:00 PM.
-#
-# Por eso, el primer paso real del trabajo ("Verificar ventana
-# horaria") calcula si el momento actual esta permitido segun esa
-# regla, y todos los pasos siguientes se saltan automaticamente si
-# no lo esta (usando "if: steps.ventana.outputs.ejecutar == 'true'").
-#
-# NOTA: el repositorio ahora es publico, asi que GitHub Actions es
-# gratis e ilimitado; esta ventana horaria se mantiene por
-# preferencia (no por ahorro de minutos).
 on:
   workflow_dispatch:
 jobs:
   ejecutar_sistema:
     runs-on: ubuntu-latest
     steps:
-      # Paso 1: Descarga una copia del codigo del repositorio
       - name: Descargar el codigo
         uses: actions/checkout@v4
-      # Paso 2: Instala Python en la maquina virtual de GitHub
       - name: Instalar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      # Paso 3: Instala todas las librerias que el proyecto necesita
       - name: Instalar dependencias
         run: |
           pip install pandas==2.2.3 pydataxm matplotlib reportlab python-dotenv requests openpyxl beautifulsoup4 holidays
-      # Paso 4: Crea el archivo .env con las credenciales guardadas
-      # de forma segura en los "Secrets" de GitHub (nunca quedan
-      # visibles en el codigo ni en los registros de ejecucion).
       - name: Crear archivo de credenciales
         run: |
           echo "CORREO_DESTINO=${{ secrets.CORREO_DESTINO }}" >> .env
           echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
           echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
           echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
-      # Paso 5: Verifica si el momento actual esta dentro de la
-      # ventana horaria permitida (dia habil 8am-5pm, o fin de
-      # semana/festivo 9am-12pm), usando la hora real de Colombia y
-      # los festivos oficiales calculados con la libreria "holidays".
+      - name: PRUEBA - Regenerar resumen ejecutivo
+        run: python Reportes/generar_informe_ejecutivo.py
       - name: Verificar ventana horaria
         id: ventana
         run: |
@@ -69,40 +44,22 @@ jobs:
           print('true' if permitido else 'false')
           ")
           echo "ejecutar=$RESULTADO" >> "$GITHUB_OUTPUT"
-          if [ "$RESULTADO" = "true" ]; then
-            echo "Dentro de la ventana horaria permitida. Continuando..."
-          else
-            echo "Fuera de la ventana horaria permitida para hoy. Se omite el resto del proceso."
-          fi
-      # Paso 6: Ejecuta el proceso diario (Modulo 1) - solo si estamos
-      # dentro de la ventana horaria permitida para hoy.
       - name: Ejecutar proceso diario
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python main_diario.py
-      # Paso 7: Ejecuta el proceso hidrologico (Modulo 3), pero solo
-      # los MIERCOLES, entre las 8:00 AM y las 12:00 PM hora Colombia.
-      # Esta condicion es independiente y mas restrictiva que la
-      # ventana general, asi que sigue aplicando igual dentro del
-      # rango permitido arriba.
       - name: Ejecutar proceso hidrologico (miercoles)
         if: steps.ventana.outputs.ejecutar == 'true'
         run: |
           DIA=$(date -u +%u)
           HORA=$(date -u +%H)
           if [ "$DIA" = "3" ] && [ "$HORA" -ge "13" ] && [ "$HORA" -lt "17" ]; then
-            echo "Es miercoles, entre 8:00 AM y 12:00 PM Colombia. Verificando si corresponde enviar..."
             python main_hidrologico.py
           else
             echo "No corresponde ejecutar el proceso hidrologico en este momento."
           fi
-      # Paso 8: Revisa si hoy corresponde enviar el Resumen Ejecutivo
-      # Quincenal (Modulo 6).
       - name: Revisar Resumen Ejecutivo Quincenal
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python main_ejecutivo.py
-      # Paso 9: Guarda los cambios en la base de datos y los informes
-      # generados, subiendolos de vuelta al repositorio. Solo se
-      # intenta si el proceso realmente corrio.
       - name: Guardar cambios en el repositorio
         if: steps.ventana.outputs.ejecutar == 'true'
         run: |

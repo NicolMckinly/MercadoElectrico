@@ -48,7 +48,7 @@ from zona_horaria import ahora_colombia
 # Destinatarios adicionales que reciben UNICAMENTE el informe diario
 # (que incluye el grafico y la tabla del IMAR), ademas del correo
 # principal configurado en el .env.
-CORREOS_ADICIONALES_IMAR = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com"]
+CORREOS_ADICIONALES_IMAR = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com", "albeiro.rengifo@tmmorro.com"]
 
 
 def ejecutar_proceso_diario():

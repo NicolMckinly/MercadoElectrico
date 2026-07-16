@@ -5,16 +5,22 @@ Ubicacion: Reportes/generar_informe_ejecutivo.py
 Genera el Resumen Ejecutivo Quincenal en PDF (Modulo 6 de la
 especificacion original), que junta en un solo documento: Precio de
 Bolsa, Precio de Escasez, Embalses, Aportes, Generacion por Fuente,
-Noticias y Alertas, terminando con una conclusion automatica.
+Alertas y una conclusion automatica.
 
 Todas las graficas de este informe muestran una ventana de 12 MESES
-MOVILES: desde ayer (dia n-1, ultimo dia con datos publicados) hacia
-atras 365 dias. Esta ventana se recalcula automaticamente cada vez
-que se genera el informe, asi que avanza sola dia a dia y mes a mes,
-sin necesidad de ajustar nada manualmente.
+MOVILES (eje X mes a mes): desde ayer (dia n-1, ultimo dia con datos
+publicados) hacia atras 365 dias. Esta ventana se recalcula
+automaticamente cada vez que se genera el informe.
 
-Este informe se envia cada 15 dias (no diario ni semanal), segun lo
-pedido por el usuario.
+Diseno compacto en 2 PAGINAS: sin tarjeta KPI de "Alertas Activas"
+(se quito, aunque la seccion de detalle de alertas se conserva mas
+abajo si hay alguna), sin seccion de noticias, y con la Conclusion
+ubicada antes de Alertas. Todo el texto del documento (incluyendo
+titulos) usa tamano de fuente uniforme de 12pt. Margenes reducidos
+(1.2cm en los 4 lados) para que las graficas quepan bien en 2
+paginas.
+
+Este informe se envia cada 15 dias (no diario ni semanal).
 
 La fecha se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
 en vez de datetime.now(), para que el nombre del archivo y la fecha
@@ -28,7 +34,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak
+    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, KeepTogether
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
@@ -53,9 +59,12 @@ COLOR_BORDE = colors.HexColor("#DDDDDD")
 COLOR_ACENTO_PRECIO = colors.HexColor("#1F4E79")
 COLOR_ACENTO_ESCASEZ = colors.HexColor("#B22222")
 COLOR_ACENTO_EMBALSES = colors.HexColor("#1F6F50")
-COLOR_ACENTO_ALERTAS = colors.HexColor("#D9822B")
 
-ANCHO_TARJETA = 4.3 * cm
+TAMANO_FUENTE_BASE = 12
+ANCHO_TARJETA = 5.5 * cm
+
+MARGEN = 1.2 * cm
+ANCHO_CONTENIDO = 21.59 * cm - (MARGEN * 2)
 
 MESES_EN_ESPANOL_LARGO = {
     1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
@@ -66,26 +75,26 @@ MESES_EN_ESPANOL_LARGO = {
 
 def _crear_tarjeta_kpi(titulo, valor, color_acento):
     estilo_titulo = ParagraphStyle(
-        "TituloTarjetaE", fontSize=9, textColor=COLOR_TEXTO,
-        alignment=TA_CENTER, spaceAfter=4, fontName="Helvetica-Bold", leading=12
+        "TituloTarjetaE", fontSize=TAMANO_FUENTE_BASE, textColor=COLOR_TEXTO,
+        alignment=TA_CENTER, spaceAfter=3, fontName="Helvetica-Bold", leading=14
     )
     estilo_valor = ParagraphStyle(
-        "ValorTarjetaE", fontSize=14, textColor=color_acento,
+        "ValorTarjetaE", fontSize=TAMANO_FUENTE_BASE, textColor=color_acento,
         alignment=TA_CENTER, fontName="Helvetica-Bold"
     )
 
-    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm])
+    franja_acento = Table([[""]], colWidths=[ANCHO_TARJETA], rowHeights=[0.2 * cm])
     franja_acento.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), color_acento)]))
 
     contenido = [[franja_acento], [Paragraph(titulo, estilo_titulo)], [Paragraph(valor, estilo_valor)]]
 
-    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.22 * cm, 1.2 * cm, 1.1 * cm])
+    tabla = Table(contenido, colWidths=[ANCHO_TARJETA], rowHeights=[0.2 * cm, 1.0 * cm, 0.9 * cm])
     tabla.setStyle(TableStyle([
         ("SPAN", (0, 0), (0, 0)),
         ("BACKGROUND", (0, 1), (-1, -1), COLOR_FONDO_TARJETA),
         ("BOX", (0, 0), (-1, -1), 0.75, COLOR_BORDE),
-        ("TOPPADDING", (0, 1), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     return tabla
@@ -115,34 +124,30 @@ def generar_informe_ejecutivo():
 
     documento = SimpleDocTemplate(
         ruta_pdf, pagesize=letter,
-        topMargin=1.5 * cm, bottomMargin=1.5 * cm, leftMargin=1.5 * cm, rightMargin=1.5 * cm
+        topMargin=MARGEN, bottomMargin=MARGEN, leftMargin=MARGEN, rightMargin=MARGEN
     )
 
     estilos = getSampleStyleSheet()
 
     estilo_titulo_principal = ParagraphStyle(
         "TituloPrincipalE", parent=estilos["Title"], textColor=COLOR_TEXTO,
-        fontSize=20, spaceAfter=4, fontName="Helvetica-Bold"
+        fontSize=TAMANO_FUENTE_BASE, spaceAfter=3, fontName="Helvetica-Bold"
     )
     estilo_subtitulo = ParagraphStyle(
         "SubtituloE", parent=estilos["Normal"], textColor=COLOR_TEXTO,
-        fontSize=12, spaceAfter=16, fontName="Helvetica"
+        fontSize=TAMANO_FUENTE_BASE, spaceAfter=8, fontName="Helvetica"
     )
     estilo_seccion = ParagraphStyle(
         "SeccionE", parent=estilos["Heading2"], textColor=COLOR_TEXTO,
-        fontSize=14, spaceBefore=18, spaceAfter=8, fontName="Helvetica-Bold"
+        fontSize=TAMANO_FUENTE_BASE, spaceBefore=6, spaceAfter=3, fontName="Helvetica-Bold"
     )
     estilo_cuerpo = ParagraphStyle(
-        "CuerpoE", parent=estilos["Normal"], fontSize=12, leading=16,
+        "CuerpoE", parent=estilos["Normal"], fontSize=TAMANO_FUENTE_BASE, leading=15,
         textColor=COLOR_TEXTO, fontName="Helvetica"
     )
     estilo_conclusion = ParagraphStyle(
-        "ConclusionE", parent=estilos["Normal"], fontSize=12, leading=17,
+        "ConclusionE", parent=estilos["Normal"], fontSize=TAMANO_FUENTE_BASE, leading=15,
         textColor=COLOR_TEXTO, fontName="Helvetica"
-    )
-    estilo_item = ParagraphStyle(
-        "ItemE", parent=estilos["Normal"], fontSize=10, leading=14,
-        textColor=COLOR_TEXTO, fontName="Helvetica", spaceAfter=6
     )
 
     elementos = []
@@ -165,56 +170,56 @@ def generar_informe_ejecutivo():
         "{:.1f}".format(eh["embalses_porcentaje_actual"] * 100) + "%" if eh is not None else "N/D",
         COLOR_ACENTO_EMBALSES
     )
-    tarjeta_alertas = _crear_tarjeta_kpi("Alertas Activas", str(len(resumen["alertas"])), COLOR_ACENTO_ALERTAS)
 
-    fila_tarjetas = Table([[tarjeta_precio, tarjeta_escasez, tarjeta_embalses, tarjeta_alertas]], colWidths=[4.4 * cm] * 4)
+    fila_tarjetas = Table([[tarjeta_precio, tarjeta_escasez, tarjeta_embalses]], colWidths=[5.9 * cm] * 3)
     fila_tarjetas.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
     elementos.append(fila_tarjetas)
-    elementos.append(Spacer(1, 16))
+    elementos.append(Spacer(1, 6))
 
-    elementos.append(Paragraph("Precio de Bolsa y Precio de Escasez - Últimos 12 Meses", estilo_seccion))
+    # ---------- Precio de Bolsa y Precio de Escasez ----------
+    seccion_precio = [Paragraph("Precio de Bolsa y Precio de Escasez - Últimos 12 Meses", estilo_seccion)]
     if ruta_grafico_precio is not None and os.path.exists(ruta_grafico_precio):
-        elementos.append(Image(ruta_grafico_precio, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_precio.append(Image(ruta_grafico_precio, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
+    elementos.append(KeepTogether(seccion_precio))
 
-    elementos.append(PageBreak())
+    elementos.append(Spacer(1, 4))
 
-    elementos.append(Paragraph("Embalses - Últimos 12 Meses", estilo_seccion))
+    # ---------- Embalses ----------
+    seccion_embalses = [Paragraph("Embalses - Últimos 12 Meses", estilo_seccion)]
     if ruta_grafico_embalses is not None and os.path.exists(ruta_grafico_embalses):
-        elementos.append(Image(ruta_grafico_embalses, width=17 * cm, height=17 * cm * (5 / 11)))
+        seccion_embalses.append(Image(ruta_grafico_embalses, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
+    elementos.append(KeepTogether(seccion_embalses))
 
-    elementos.append(Spacer(1, 10))
-    elementos.append(Paragraph("Aportes Hídricos - Últimos 12 Meses", estilo_seccion))
-    if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
-        elementos.append(Image(ruta_grafico_aportes, width=17 * cm, height=17 * cm * (5 / 11)))
-
+    # ======================= PAGINA 2 =======================
     elementos.append(PageBreak())
 
-    elementos.append(Paragraph("Generación por Fuente - Últimos 12 Meses", estilo_seccion))
+    # ---------- Aportes Hidricos ----------
+    seccion_aportes = [Paragraph("Aportes Hídricos - Últimos 12 Meses", estilo_seccion)]
+    if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
+        seccion_aportes.append(Image(ruta_grafico_aportes, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
+    elementos.append(KeepTogether(seccion_aportes))
+
+    elementos.append(Spacer(1, 4))
+
+    # ---------- Generacion por Fuente ----------
+    seccion_generacion = [Paragraph("Generación por Fuente - Últimos 12 Meses", estilo_seccion)]
     if ruta_grafico_generacion is not None and os.path.exists(ruta_grafico_generacion):
-        elementos.append(Image(ruta_grafico_generacion, width=17 * cm, height=17 * cm * (5.5 / 11)))
+        seccion_generacion.append(Image(ruta_grafico_generacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
+    elementos.append(KeepTogether(seccion_generacion))
 
-    if len(resumen["noticias"]) > 0:
-        elementos.append(Spacer(1, 10))
-        elementos.append(Paragraph("Noticias Relacionadas (últimos 15 días)", estilo_seccion))
+    elementos.append(Spacer(1, 6))
 
-        for _, noticia in resumen["noticias"].head(8).iterrows():
-            texto_item = (
-                "<b>[" + noticia["fecha_publicacion"] + "]</b> " + noticia["titulo"]
-                + " (" + noticia["fuente"] + ") - "
-                + "<link href='" + noticia["enlace"] + "' color='blue'>Ver noticia</link>"
-            )
-            elementos.append(Paragraph(texto_item, estilo_item))
+    # ---------- Conclusion (antes de Alertas) ----------
+    seccion_conclusion = [Paragraph("Conclusión", estilo_seccion), Paragraph(resumen["conclusion"], estilo_conclusion)]
+    elementos.append(KeepTogether(seccion_conclusion))
 
+    # ---------- Alertas Activas (detalle, si hay) ----------
     if len(resumen["alertas"]) > 0:
-        elementos.append(Spacer(1, 10))
-        elementos.append(Paragraph("Alertas Activas", estilo_seccion))
-
+        elementos.append(Spacer(1, 6))
+        seccion_alertas = [Paragraph("Alertas Activas", estilo_seccion)]
         for alerta in resumen["alertas"]:
-            elementos.append(Paragraph("- " + alerta["mensaje"], estilo_cuerpo))
-
-    elementos.append(Spacer(1, 14))
-    elementos.append(Paragraph("Conclusión", estilo_seccion))
-    elementos.append(Paragraph(resumen["conclusion"], estilo_conclusion))
+            seccion_alertas.append(Paragraph("- " + alerta["mensaje"], estilo_cuerpo))
+        elementos.append(KeepTogether(seccion_alertas))
 
     documento.build(elementos)
 

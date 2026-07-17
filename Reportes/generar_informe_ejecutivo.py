@@ -177,7 +177,7 @@ def generar_informe_ejecutivo():
     elementos.append(Spacer(1, 6))
 
     # ---------- Precio de Bolsa y Precio de Escasez ----------
-    seccion_precio = [Paragraph("Precio de Bolsa y Precio de Escasez - Últimos 12 Meses", estilo_seccion)]
+    seccion_precio = [Paragraph("Precio de Bolsa y Precio de Escasez", estilo_seccion)]
     if ruta_grafico_precio is not None and os.path.exists(ruta_grafico_precio):
         seccion_precio.append(Image(ruta_grafico_precio, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     elementos.append(KeepTogether(seccion_precio))
@@ -185,7 +185,7 @@ def generar_informe_ejecutivo():
     elementos.append(Spacer(1, 4))
 
     # ---------- Embalses ----------
-    seccion_embalses = [Paragraph("Embalses - Últimos 12 Meses", estilo_seccion)]
+    seccion_embalses = [Paragraph("Embalses", estilo_seccion)]
     if ruta_grafico_embalses is not None and os.path.exists(ruta_grafico_embalses):
         seccion_embalses.append(Image(ruta_grafico_embalses, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     elementos.append(KeepTogether(seccion_embalses))
@@ -194,7 +194,7 @@ def generar_informe_ejecutivo():
     elementos.append(PageBreak())
 
     # ---------- Aportes Hidricos ----------
-    seccion_aportes = [Paragraph("Aportes Hídricos - Últimos 12 Meses", estilo_seccion)]
+    seccion_aportes = [Paragraph("Aportes Hídricos", estilo_seccion)]
     if ruta_grafico_aportes is not None and os.path.exists(ruta_grafico_aportes):
         seccion_aportes.append(Image(ruta_grafico_aportes, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     elementos.append(KeepTogether(seccion_aportes))
@@ -202,7 +202,7 @@ def generar_informe_ejecutivo():
     elementos.append(Spacer(1, 4))
 
     # ---------- Generacion por Fuente ----------
-    seccion_generacion = [Paragraph("Generación por Fuente - Últimos 12 Meses", estilo_seccion)]
+    seccion_generacion = [Paragraph("Generación por Fuente", estilo_seccion)]
     if ruta_grafico_generacion is not None and os.path.exists(ruta_grafico_generacion):
         seccion_generacion.append(Image(ruta_grafico_generacion, width=ANCHO_CONTENIDO, height=ANCHO_CONTENIDO * (4.2 / 11)))
     elementos.append(KeepTogether(seccion_generacion))

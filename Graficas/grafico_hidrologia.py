@@ -185,7 +185,11 @@ def generar_grafico_embalses_anual_ejecutivo():
     """
     hoy = ahora_colombia()
     fecha_fin = (hoy - timedelta(days=1)).replace(tzinfo=None)
-    fecha_inicio_texto = (fecha_fin - timedelta(days=365)).strftime("%Y-%m-%d")
+    # Empezamos el dia 1 del mismo mes, pero del año pasado, en vez de
+    # restar 365 dias exactos. Asi el primer mes de la grafica siempre
+    # queda completo, en vez de cortado a la mitad.
+    fecha_inicio = fecha_fin.replace(year=fecha_fin.year - 1, day=1)
+    fecha_inicio_texto = fecha_inicio.strftime("%Y-%m-%d")
     fecha_fin_texto = fecha_fin.strftime("%Y-%m-%d")
 
     datos = consultar_todo_variables_hidrologicas()
@@ -247,7 +251,11 @@ def generar_grafico_aportes_anual_ejecutivo():
     """
     hoy = ahora_colombia()
     fecha_fin = (hoy - timedelta(days=1)).replace(tzinfo=None)
-    fecha_inicio_texto = (fecha_fin - timedelta(days=365)).strftime("%Y-%m-%d")
+    # Empezamos el dia 1 del mismo mes, pero del año pasado, en vez de
+    # restar 365 dias exactos. Asi el primer mes de la grafica siempre
+    # queda completo, en vez de cortado a la mitad.
+    fecha_inicio = fecha_fin.replace(year=fecha_fin.year - 1, day=1)
+    fecha_inicio_texto = fecha_inicio.strftime("%Y-%m-%d")
     fecha_fin_texto = fecha_fin.strftime("%Y-%m-%d")
 
     datos = consultar_todo_variables_hidrologicas()

@@ -17,6 +17,12 @@ Genera los graficos para el Modulo 3 (Variables Hidrologicas):
 
 Todos los graficos tienen su eje Y siempre partiendo desde 0.
 
+Los meses del eje X de las versiones "anual_ejecutivo" se traducen
+manualmente al espanol, porque el servidor donde corre el sistema
+(GitHub Actions) no tiene instalado el idioma espanol, y usar
+DateFormatter("%b-%y") directamente mostraria el mes en ingles
+(Jul-25, Aug-25...).
+
 Los graficos se guardan como imagenes .png dentro de esta misma carpeta.
 """
 
@@ -26,6 +32,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import FuncFormatter
 from datetime import datetime, timedelta
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +48,22 @@ COLOR_SENDA = "#1F4E79"         # azul oscuro, para la senda de referencia
 COLOR_APORTES = "#7DCEA0"       # verde claro, para el area de Caudal
 COLOR_MEDIA_HISTORICA = "#95A5A6"  # gris, para la referencia
 COLOR_PORCENTAJE = "#1F6F50"    # verde oscuro, para el eje secundario de %
+
+MESES_ABREVIADOS_ESPANOL = {
+    1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+    7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+}
+
+
+def _formatear_mes_anio_en_espanol(valor_x, posicion=None):
+    """
+    Formateador personalizado para el eje X: convierte la fecha
+    numerica interna de matplotlib en "Mes-Año" abreviado en
+    espanol (Ago-25, Sep-25...), sin depender del idioma instalado
+    en el servidor.
+    """
+    fecha = mdates.num2date(valor_x)
+    return MESES_ABREVIADOS_ESPANOL[fecha.month] + "-" + fecha.strftime("%y")
 
 
 def generar_grafico_embalses():
@@ -194,10 +217,10 @@ def generar_grafico_embalses_anual_ejecutivo():
         if len(senda_visible) > 0:
             ejes.plot(senda_visible["fecha_dt"], senda_visible["valor_pct"], "--", color=COLOR_SENDA, linewidth=2, label="Senda de Referencia")
 
-    ejes.set_title("Nivel de Embalse % - Últimos 12 Meses", fontsize=13, fontweight="bold")
+    ejes.set_title("Nivel de Embalse %", fontsize=13, fontweight="bold")
     ejes.set_ylabel("Capacidad util (%)")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%b-%y"))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_mes_anio_en_espanol))
     ejes.xaxis.set_major_locator(mdates.MonthLocator())
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.set_ylim(bottom=0)
@@ -250,10 +273,10 @@ def generar_grafico_aportes_anual_ejecutivo():
     ejes.stackplot(datos["fecha_dt"], datos["aportes_gwh"], colors=[COLOR_APORTES], alpha=0.85, labels=["Caudal GWh/día"])
     ejes.plot(datos["fecha_dt"], datos["media_historica_gwh"], "--", color=COLOR_MEDIA_HISTORICA, linewidth=2, label="Media Historica (GWh/dia)")
 
-    ejes.set_title("Aportes SIN - Últimos 12 Meses", fontsize=13, fontweight="bold")
+    ejes.set_title("Aportes SIN", fontsize=13, fontweight="bold")
     ejes.set_ylabel("GWh/dia")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%b-%y"))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_mes_anio_en_espanol))
     ejes.xaxis.set_major_locator(mdates.MonthLocator())
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.set_ylim(bottom=0)

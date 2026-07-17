@@ -20,30 +20,6 @@ jobs:
           echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
           echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
           echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
-      - name: TEMPORAL - Backfill escasez y senda
-        run: |
-          python -c "import sys; sys.path.append('API'); from precio_escasez import backfill_ultimos_12_meses_escasez; backfill_ultimos_12_meses_escasez()"
-          python API/senda_referencia.py
-      - name: TEMPORAL - Guardar backfill
-        run: |
-          git config --global user.name "Sistema Automatico"
-          git config --global user.email "sistema@mercadoelectrico.local"
-          git config --global pull.rebase false
-          git add -f BaseDatos/mercado_electrico.db
-          git commit -m "Backfill escasez y senda de referencia" || echo "Sin cambios"
-          git pull origin master --no-edit -X ours
-          git push
-      - name: PRUEBA - Regenerar resumen ejecutivo
-        run: python Reportes/generar_informe_ejecutivo.py
-      - name: Guardar PDF de prueba
-        run: |
-          git config --global user.name "Sistema Automatico"
-          git config --global user.email "sistema@mercadoelectrico.local"
-          git config --global pull.rebase false
-          git add -f Reportes/*.pdf Graficas/*.png
-          git commit -m "PRUEBA - Resumen ejecutivo con backfill" || echo "Sin cambios"
-          git pull origin master --no-edit -X ours
-          git push
       - name: Verificar ventana horaria
         id: ventana
         run: |

@@ -9,7 +9,11 @@ las categorias combinadas segun lo definido en listado_recursos.py:
 - Autogen. y Cogen. y Gen. Distribuida (combinadas)
 
 Incluye tambien una version de los ULTIMOS 12 MESES MOVILES
-(terminando ayer), usada en el Resumen Ejecutivo Quincenal.
+(terminando ayer), usada en el Resumen Ejecutivo Quincenal. Los
+meses del eje X de esa version se traducen manualmente al espanol,
+porque el servidor donde corre el sistema (GitHub Actions) no tiene
+instalado el idioma espanol, y usar DateFormatter("%b-%y")
+directamente mostraria el mes en ingles (Jul-25, Aug-25...).
 
 Los graficos se guardan como imagenes .png dentro de esta misma carpeta.
 """
@@ -19,6 +23,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from matplotlib.ticker import FuncFormatter
 from datetime import datetime, timedelta
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
@@ -43,6 +48,24 @@ ETIQUETAS_MOSTRAR = {
 }
 # Orden fijo para que el apilado sea siempre consistente entre ejecuciones
 ORDEN_TECNOLOGIAS = ["Hidraulica", "Termica", "Solar y Eolica", "Autogen. y Cogen. y Gen. Distribuida", "Otras tecnologias"]
+
+MESES_ABREVIADOS_ESPANOL = {
+    1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr", 5: "May", 6: "Jun",
+    7: "Jul", 8: "Ago", 9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+}
+
+
+def _formatear_mes_anio_en_espanol(valor_x, posicion=None):
+    """
+    Formateador personalizado para el eje X: convierte la fecha
+    numerica interna de matplotlib en "Mes-Año" abreviado en
+    espanol (Ago-25, Sep-25...), sin depender del idioma instalado
+    en el servidor.
+    """
+    fecha = mdates.num2date(valor_x)
+    return MESES_ABREVIADOS_ESPANOL[fecha.month] + "-" + fecha.strftime("%y")
+
+
 def generar_grafico_generacion():
     """
     Genera el grafico de areas apiladas de Generacion por Fuente, de
@@ -126,10 +149,10 @@ def generar_grafico_generacion_anual_ejecutivo():
         colors=colores,
         alpha=0.85
     )
-    ejes.set_title("Generacion por Fuente - Últimos 12 Meses", fontsize=13, fontweight="bold")
+    ejes.set_title("Generacion por Fuente", fontsize=13, fontweight="bold")
     ejes.set_ylabel("GWh")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%b-%y"))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_mes_anio_en_espanol))
     ejes.xaxis.set_major_locator(mdates.MonthLocator())
     ejes.grid(True, linestyle="--", alpha=0.3)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2, frameon=False)

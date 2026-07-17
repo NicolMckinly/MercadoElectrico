@@ -151,10 +151,15 @@ def backfill_historico_anual_escasez():
 
 def backfill_ultimos_12_meses_escasez():
     """
-    Completa el historico de Precio de Escasez para los ultimos 12
-    meses, contando hacia atras desde el mes actual (incluso si eso
-    cruza al año anterior). Guarda en la base de datos el valor
-    vigente del dia 5 de cada uno de esos meses.
+    Completa el historico de Precio de Escasez para los ultimos 13
+    meses calendario, contando hacia atras desde el mes actual
+    (incluso si eso cruza al año anterior). Guarda en la base de
+    datos el valor vigente del dia 5 de cada uno de esos meses.
+
+    Se usan 13 meses (no 12) porque la grafica del Resumen Ejecutivo
+    usa una ventana de 365 dias corridos (no meses completos), asi
+    que empieza a mitad del mes de hace un año. Con 13 meses
+    calendario nos aseguramos de cubrir ese mes parcial tambien.
 
     Se usa UNA SOLA VEZ para llenar el hueco de los meses anteriores
     a cuando el sistema empezo a correr, de modo que la grafica de
@@ -162,9 +167,9 @@ def backfill_ultimos_12_meses_escasez():
     """
     hoy = datetime.now()
 
-    print("Completando historico de los ultimos 12 meses de Precio de Escasez...")
+    print("Completando historico de los ultimos 13 meses de Precio de Escasez...")
 
-    for meses_atras in range(11, -1, -1):
+    for meses_atras in range(12, -1, -1):
         mes_objetivo = hoy.month - meses_atras
         anio_objetivo = hoy.year
 

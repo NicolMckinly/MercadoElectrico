@@ -10,11 +10,15 @@ los dias, su valor se mantiene igual durante todo el mes vigente).
 Las unidades que entrega XM para esta metrica ya vienen en COP/kWh,
 por lo que NO es necesario dividir entre 1000 (a diferencia del IMAR).
 
-Este archivo tiene dos funciones principales:
+Este archivo tiene tres funciones principales:
 - obtener_precio_escasez_reciente(): trae el valor vigente actual.
 - backfill_historico_anual_escasez(): completa el historico mes a mes
   desde enero del año en curso hasta hoy, para poder graficar como
   ha variado el Precio de Escasez a lo largo del año.
+- backfill_ultimos_12_meses_escasez(): completa el historico de los
+  ultimos 12 meses (contando hacia atras desde el mes actual, incluso
+  si eso cruza al año anterior). Se usa una sola vez para llenar el
+  hueco de los meses anteriores a cuando el sistema empezo a correr.
 """
 
 import requests
@@ -143,6 +147,45 @@ def backfill_historico_anual_escasez():
             print("  Mes " + str(numero_mes).zfill(2) + ": " + "{:.2f}".format(valor) + " COP/kWh")
         else:
             print("  Mes " + str(numero_mes).zfill(2) + ": no disponible.")
+
+
+def backfill_ultimos_12_meses_escasez():
+    """
+    Completa el historico de Precio de Escasez para los ultimos 12
+    meses, contando hacia atras desde el mes actual (incluso si eso
+    cruza al año anterior). Guarda en la base de datos el valor
+    vigente del dia 5 de cada uno de esos meses.
+
+    Se usa UNA SOLA VEZ para llenar el hueco de los meses anteriores
+    a cuando el sistema empezo a correr, de modo que la grafica de
+    12 meses del Resumen Ejecutivo quede completa.
+    """
+    hoy = datetime.now()
+
+    print("Completando historico de los ultimos 12 meses de Precio de Escasez...")
+
+    for meses_atras in range(11, -1, -1):
+        mes_objetivo = hoy.month - meses_atras
+        anio_objetivo = hoy.year
+
+        while mes_objetivo <= 0:
+            mes_objetivo += 12
+            anio_objetivo -= 1
+
+        fecha_de_consulta = datetime(anio_objetivo, mes_objetivo, 5)
+
+        if fecha_de_consulta > hoy:
+            continue
+
+        fecha_texto, valor = _consultar_escasez_de_un_dia(fecha_de_consulta)
+
+        etiqueta = str(anio_objetivo) + "-" + str(mes_objetivo).zfill(2)
+
+        if valor is not None:
+            guardar_precio_escasez(fecha_texto, valor)
+            print("  " + etiqueta + ": " + "{:.2f}".format(valor) + " COP/kWh")
+        else:
+            print("  " + etiqueta + ": no disponible.")
 
 
 if __name__ == "__main__":

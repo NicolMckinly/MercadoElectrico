@@ -84,7 +84,10 @@ def generar_grafico_precio_anual_ejecutivo():
     """
     hoy = ahora_colombia()
     fecha_fin = (hoy - timedelta(days=1)).replace(tzinfo=None)
-    fecha_inicio = fecha_fin - timedelta(days=365)
+    # Empezamos el dia 1 del mismo mes, pero del año pasado, en vez de
+    # restar 365 dias exactos. Asi el primer mes de la grafica siempre
+    # queda completo, en vez de cortado a la mitad.
+    fecha_inicio = fecha_fin.replace(year=fecha_fin.year - 1, day=1)
 
     serie = obtener_serie_combinada(
         fecha_inicio=fecha_inicio.strftime("%Y-%m-%d"),

@@ -1,6 +1,6 @@
 """
 Modulo: grafico_precio_anual_ejecutivo.py
-Ubicacion: Graficas/grafico_precio_anual_ejecutivo.py
+Ubicacion: Reportes/grafico_precio_anual_ejecutivo.py
 
 Genera el grafico de Precio de Bolsa (diario + promedio mensual) y
 Precio de Escasez para el Resumen Ejecutivo Quincenal, usando una
@@ -133,7 +133,7 @@ def generar_grafico_precio_anual_ejecutivo():
                 ejes.annotate("{:.0f}".format(valor), xy=(fecha_x, valor), xytext=(0, 8), textcoords="offset points",
                                ha="center", fontsize=8, color=COLOR_ESCASEZ, fontweight="bold")
 
-    ejes.set_title("Precio de Bolsa vs Precio de Escasez - Últimos 12 Meses", fontsize=13, fontweight="bold")
+    ejes.set_title("Precio de Bolsa vs Precio de Escasez", fontsize=13, fontweight="bold")
     ejes.set_ylabel("Precio ($/kWh)")
     ejes.set_xlabel("Mes")
     ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_mes_en_espanol))

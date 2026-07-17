@@ -9,6 +9,13 @@ que este script prueba varios nombres posibles (año actual y
 anterior, ambas temporadas) hasta encontrar el archivo vigente que
 cubra la fecha de hoy, sin que nadie tenga que descargarlo a mano.
 
+IMPORTANTE: se guardan en la base de datos TODOS los archivos que se
+logren descargar (no solo el vigente), porque cada uno cubre un
+rango de fechas distinto (una temporada especifica). Guardarlos
+todos permite tener el historico completo de la Senda de Referencia
+para graficar los ultimos 12 meses, en vez de solo la temporada
+actual.
+
 La fuente es un archivo Excel publicado en el sitio publico de XM
 (no esta disponible en la API oficial ni en SIMEM), asi que aqui se
 usa "web scraping" del archivo publico, igual que con el IMAR.
@@ -82,19 +89,17 @@ def _extraer_tabla_senda(contenido_excel):
     return df[["fecha", "valor"]]
 
 
-def obtener_y_guardar_senda_referencia():
+def _buscar_todos_los_candidatos():
     """
-    Busca automaticamente el archivo de senda de referencia vigente
-    (probando año actual y anterior, temporadas Invierno y Verano),
-    y guarda en la base de datos el que efectivamente cubra la fecha
-    de hoy. Si ninguno cubre exactamente hoy, usa el que tenga los
-    datos mas recientes disponibles.
+    Prueba descargar los archivos de senda de referencia de año
+    actual y año anterior, ambas temporadas (hasta 4 archivos en
+    total), y devuelve la lista de todos los que se lograron
+    descargar y leer correctamente.
 
     Retorna:
-        True si se encontro y guardo un archivo, False si no.
+        Una lista de diccionarios con "anio", "temporada", "tabla",
+        "fecha_min" y "fecha_max" para cada archivo encontrado.
     """
-    hoy_texto = datetime.now().strftime("%Y-%m-%d")
-
     candidatos_probados = []
 
     for anio in [datetime.now().year, datetime.now().year - 1]:
@@ -119,25 +124,46 @@ def obtener_y_guardar_senda_referencia():
                 except Exception as error:
                     print("  Se encontro el archivo pero no se pudo leer: " + str(error))
 
+    return candidatos_probados
+
+
+def obtener_y_guardar_senda_referencia():
+    """
+    Busca automaticamente el archivo de senda de referencia vigente
+    (probando año actual y anterior, temporadas Invierno y Verano),
+    y guarda en la base de datos TODOS los archivos que logre
+    descargar exitosamente (no solo el vigente), para que el
+    historico quede lo mas completo posible con cada ejecucion.
+
+    Retorna:
+        True si se encontro y guardo al menos un archivo, False si no.
+    """
+    hoy_texto = datetime.now().strftime("%Y-%m-%d")
+
+    candidatos_probados = _buscar_todos_los_candidatos()
+
     if len(candidatos_probados) == 0:
         print("No se encontro ningun archivo de senda de referencia.")
         return False
 
-    # Preferimos el archivo cuyo rango de fechas SI cubra el dia de hoy
+    # Guardamos TODOS los archivos encontrados, ya que cada uno cubre
+    # un rango de fechas distinto (una temporada especifica).
+    for candidato in candidatos_probados:
+        guardar_senda_referencia(candidato["tabla"])
+        print("Guardado: " + candidato["temporada"] + " " + str(candidato["anio"]) + " (" + candidato["fecha_min"] + " a " + candidato["fecha_max"] + ")")
+
+    # Informativo: cual de ellos es el vigente para hoy
     candidato_vigente = None
     for candidato in candidatos_probados:
         if candidato["fecha_min"] <= hoy_texto <= candidato["fecha_max"]:
             candidato_vigente = candidato
             break
 
-    # Si ninguno cubre exactamente hoy, usamos el que tenga la fecha mas reciente
-    if candidato_vigente is None:
-        candidato_vigente = max(candidatos_probados, key=lambda c: c["fecha_max"])
-        print("Ningun archivo cubre exactamente hoy. Usando el mas reciente: " + candidato_vigente["temporada"] + " " + str(candidato_vigente["anio"]))
+    if candidato_vigente is not None:
+        print("Archivo vigente para hoy: " + candidato_vigente["temporada"] + " " + str(candidato_vigente["anio"]))
     else:
-        print("Archivo vigente encontrado: " + candidato_vigente["temporada"] + " " + str(candidato_vigente["anio"]))
+        print("Ningun archivo cubre exactamente el dia de hoy, pero se guardaron todos los encontrados.")
 
-    guardar_senda_referencia(candidato_vigente["tabla"])
     return True
 
 

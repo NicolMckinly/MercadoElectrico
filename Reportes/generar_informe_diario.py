@@ -13,8 +13,10 @@ PAGINA 2: Grafico IMAR vs Precio de Bolsa Real (mes vigente) y
     grafico del IMAR del dia siguiente periodo a periodo.
 PAGINA 3: Tabla del IMAR del dia siguiente, periodo a periodo (con
     Costo WCO GasTY y Costo GE Gas TY, y fila de promedio). La
-    columna que antes decia "IMAR Ajustado" ahora se llama
-    "PB Proyectado TMM".
+    columna "PB Proyectado TMM" muestra el promedio entre el
+    promedio de los ultimos 3 dias de Precio de Bolsa real y el
+    promedio de los ultimos 3 dias de IMAR (ver
+    Analisis/tabla_imar_siguiente_dia.py para el detalle del calculo).
 
 NOTA: el grafico de "Evolucion del Precio - Mes Vigente" (antes en
 la pagina 1) se movio al Informe de Variables Hidrologicas
@@ -348,8 +350,8 @@ def generar_informe_diario():
 
     if tabla_imar is not None:
         elementos.append(Paragraph(
-            "Fecha: " + tabla_imar["fecha"] + "  |  Ajuste calculado con "
-            + str(tabla_imar["dias_usados_para_el_ajuste"]) + " día(s) de historial cruzado entre Precio de Bolsa real e IMAR.",
+            "Fecha: " + tabla_imar["fecha"] + "  |  PB Proyectado TMM calculado con hasta "
+            + str(tabla_imar["dias_usados_para_el_promedio"]) + " día(s) de historial de Precio de Bolsa real e IMAR (promedio entre ambas variables).",
             estilo_nota
         ))
         elementos.append(Spacer(1, 6))
@@ -387,24 +389,24 @@ def generar_informe_diario():
             datos_tabla_imar.append([
                 Paragraph(fila_imar["periodo"], estilo_celda_periodo),
                 Paragraph("{:.1f}".format(fila_imar["imar_crudo"]), estilo_celda_numero),
-                Paragraph("{:.1f}".format(fila_imar["imar_ajustado"]), estilo_celda_numero),
+                Paragraph("{:.1f}".format(fila_imar["pb_proyectado"]), estilo_celda_numero),
                 Paragraph("{:.1f}".format(COSTO_WCO_GASTY), estilo_celda_numero),
                 Paragraph("{:.1f}".format(COSTO_GE_GASTY), estilo_celda_numero),
             ])
 
         valores_crudos = [f["imar_crudo"] for f in tabla_imar["filas"]]
-        valores_ajustados = [f["imar_ajustado"] for f in tabla_imar["filas"]]
-        indice_del_maximo = valores_ajustados.index(max(valores_ajustados)) + 1
-        indice_del_minimo = valores_ajustados.index(min(valores_ajustados)) + 1
+        valores_proyectados = [f["pb_proyectado"] for f in tabla_imar["filas"]]
+        indice_del_maximo = valores_proyectados.index(max(valores_proyectados)) + 1
+        indice_del_minimo = valores_proyectados.index(min(valores_proyectados)) + 1
 
         promedio_crudo = sum(valores_crudos) / len(valores_crudos)
-        promedio_ajustado = sum(valores_ajustados) / len(valores_ajustados)
+        promedio_proyectado = sum(valores_proyectados) / len(valores_proyectados)
 
         indice_fila_promedio = len(datos_tabla_imar)
         datos_tabla_imar.append([
             Paragraph("PROMEDIO", estilo_celda_promedio_texto),
             Paragraph("{:.1f}".format(promedio_crudo), estilo_celda_promedio_numero),
-            Paragraph("{:.1f}".format(promedio_ajustado), estilo_celda_promedio_numero),
+            Paragraph("{:.1f}".format(promedio_proyectado), estilo_celda_promedio_numero),
             Paragraph("{:.1f}".format(COSTO_WCO_GASTY), estilo_celda_promedio_numero),
             Paragraph("{:.1f}".format(COSTO_GE_GASTY), estilo_celda_promedio_numero),
         ])

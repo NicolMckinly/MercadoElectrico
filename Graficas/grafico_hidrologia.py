@@ -66,6 +66,33 @@ def _formatear_mes_anio_en_espanol(valor_x, posicion=None):
     return MESES_ABREVIADOS_ESPANOL[fecha.month] + "-" + fecha.strftime("%y")
 
 
+def _formatear_dia_mes_en_espanol(valor_x, posicion=None):
+    """
+    Formateador personalizado para el eje X: convierte la fecha
+    numerica interna de matplotlib en "Dia-Mes" abreviado en
+    espanol (20-Jul, 21-Jul...), sin depender del idioma instalado
+    en el servidor.
+    """
+    fecha = mdates.num2date(valor_x)
+    return str(fecha.day) + "-" + MESES_ABREVIADOS_ESPANOL[fecha.month]
+
+
+def _dia_20_del_mes_anterior(fecha):
+    """
+    Calcula el dia 20 del mes calendario anterior al de la fecha
+    dada. Se usa como inicio de la ventana movil de las graficas de
+    Embalses, Aportes y Generacion: cada mes la ventana arranca en
+    el dia 20 del mes anterior y avanza sola con el paso del tiempo
+    (sin necesidad de ajustar nada a mano).
+    """
+    anio = fecha.year
+    mes_anterior = fecha.month - 1
+    if mes_anterior == 0:
+        mes_anterior = 12
+        anio -= 1
+    return datetime(anio, mes_anterior, 20)
+
+
 def generar_grafico_embalses():
     """
     Genera el grafico de Nivel de Embalse (%) de los ultimos 30 dias
@@ -75,19 +102,28 @@ def generar_grafico_embalses():
     Retorna:
         La ruta del archivo generado, o None si no hay datos.
     """
+    hoy = ahora_colombia()
+    fecha_inicio_texto = _dia_20_del_mes_anterior(hoy).strftime("%Y-%m-%d")
+    fecha_fin_texto = hoy.strftime("%Y-%m-%d")
+
     datos = consultar_todo_variables_hidrologicas()
 
     if len(datos) == 0:
         print("No hay datos de embalses disponibles todavia.")
         return None
 
-    datos = datos.sort_values("fecha").tail(30)
+    datos = datos[(datos["fecha"] >= fecha_inicio_texto) & (datos["fecha"] <= fecha_fin_texto)]
+    if len(datos) == 0:
+        print("No hay datos de embalses en la ventana del mes.")
+        return None
+
+    datos = datos.sort_values("fecha")
     datos["fecha_dt"] = datos["fecha"].apply(lambda f: datetime.strptime(f, "%Y-%m-%d"))
     datos["embalses_pct"] = datos["embalses_porcentaje"] * 100
 
     senda = consultar_todo_senda_referencia()
 
-    figura, ejes = plt.subplots(figsize=(11, 5))
+    figura, ejes = plt.subplots(figsize=(16, 5))
 
     ejes.stackplot(datos["fecha_dt"], datos["embalses_pct"], colors=[COLOR_EMBALSES], alpha=0.85, labels=["Embalse SIN (%)"])
 
@@ -106,7 +142,9 @@ def generar_grafico_embalses():
     ejes.set_title("Nivel de Embalse %", fontsize=13, fontweight="bold")
     ejes.set_ylabel("Capacidad util (%)")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b"))
+    ejes.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_dia_mes_en_espanol))
+    plt.setp(ejes.get_xticklabels(), rotation=0, ha="center", fontsize=7)
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.set_ylim(bottom=0)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False)
@@ -130,20 +168,29 @@ def generar_grafico_aportes():
     Retorna:
         La ruta del archivo generado, o None si no hay datos.
     """
+    hoy = ahora_colombia()
+    fecha_inicio_texto = _dia_20_del_mes_anterior(hoy).strftime("%Y-%m-%d")
+    fecha_fin_texto = hoy.strftime("%Y-%m-%d")
+
     datos = consultar_todo_variables_hidrologicas()
 
     if len(datos) == 0:
         print("No hay datos de aportes disponibles todavia.")
         return None
 
-    datos = datos.sort_values("fecha").tail(30)
+    datos = datos[(datos["fecha"] >= fecha_inicio_texto) & (datos["fecha"] <= fecha_fin_texto)]
+    if len(datos) == 0:
+        print("No hay datos de aportes en la ventana del mes.")
+        return None
+
+    datos = datos.sort_values("fecha")
     datos["fecha_dt"] = datos["fecha"].apply(lambda f: datetime.strptime(f, "%Y-%m-%d"))
 
     datos["aportes_gwh"] = datos["aportes_energia"] / 1_000_000
     datos["media_historica_gwh"] = datos["aportes_media_historica"] / 1_000_000
     datos["aportes_pct"] = datos["aportes_porcentaje"] * 100
 
-    figura, ejes = plt.subplots(figsize=(11, 5))
+    figura, ejes = plt.subplots(figsize=(16, 5))
 
     ejes.stackplot(datos["fecha_dt"], datos["aportes_gwh"], colors=[COLOR_APORTES], alpha=0.85, labels=["Caudal GWh/día"])
     ejes.plot(datos["fecha_dt"], datos["media_historica_gwh"], "--", color=COLOR_MEDIA_HISTORICA, linewidth=2, label="Media Historica (GWh/dia)")
@@ -151,7 +198,9 @@ def generar_grafico_aportes():
     ejes.set_title("Aportes SIN", fontsize=13, fontweight="bold")
     ejes.set_ylabel("GWh/dia")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b"))
+    ejes.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_dia_mes_en_espanol))
+    plt.setp(ejes.get_xticklabels(), rotation=0, ha="center", fontsize=7)
     ejes.grid(True, linestyle="--", alpha=0.4)
     ejes.set_ylim(bottom=0)
 

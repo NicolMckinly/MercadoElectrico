@@ -6,8 +6,10 @@ Calcula las comparaciones que pide la especificacion del proyecto
 para el Modulo 3 (Variables Hidrologicas): variacion diaria, semanal,
 mensual, y comparacion con el mismo periodo del año anterior.
 
-Tambien genera un comentario automatico en lenguaje sencillo para
-cada variable principal (embalses y aportes).
+Tambien calcula la diferencia entre el Embalse SIN% actual y la
+Senda de Referencia vigente para esa misma fecha (Resolucion CREG
+209 de 2020), y genera un comentario automatico en lenguaje sencillo
+para cada variable principal (embalses y aportes).
 
 Este archivo NO descarga datos ni genera graficos. Solo hace calculos
 a partir de lo que ya este guardado en la base de datos.
@@ -21,7 +23,7 @@ from datetime import datetime, timedelta
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "BaseDatos"))
 
-from base_datos import consultar_todo_variables_hidrologicas
+from base_datos import consultar_todo_variables_hidrologicas, consultar_todo_senda_referencia
 
 
 def _valor_en_fecha(datos, fecha_texto, columna):
@@ -46,6 +48,31 @@ def _variacion(valor_actual, valor_anterior):
     variacion_absoluta = valor_actual - valor_anterior
     variacion_porcentual = (variacion_absoluta / valor_anterior) * 100
     return variacion_absoluta, variacion_porcentual
+
+
+def _valor_senda_vigente_en(senda, fecha_referencia_texto):
+    """
+    Busca el valor de la Senda de Referencia vigente para una fecha
+    especifica. Si no hay un dato exacto para ese dia, usa el valor
+    guardado mas reciente que sea anterior o igual a esa fecha.
+
+    Retorna:
+        El valor de la senda (fraccion decimal, ej. 0.62 para 62%),
+        o None si no hay ningun dato disponible.
+    """
+    if len(senda) == 0:
+        return None
+
+    senda = senda.copy()
+    fecha_referencia_dt = datetime.strptime(fecha_referencia_texto, "%Y-%m-%d")
+    senda["fecha_dt"] = senda["fecha"].apply(lambda f: datetime.strptime(f, "%Y-%m-%d"))
+
+    candidatos = senda[senda["fecha_dt"] <= fecha_referencia_dt]
+
+    if len(candidatos) == 0:
+        return None
+
+    return candidatos.sort_values("fecha_dt").iloc[-1]["valor"]
 
 
 def calcular_estadisticas_hidrologia():
@@ -98,6 +125,17 @@ def calcular_estadisticas_hidrologia():
     resultado["embalses_variacion_anual_puntos"], _ = _variacion(
         resultado["embalses_porcentaje_actual"], valor_embalses_anio_pasado
     )
+
+    # ---------- Senda de Referencia (Resolucion CREG 209 de 2020) ----------
+    senda = consultar_todo_senda_referencia()
+    resultado["senda_referencia_actual"] = _valor_senda_vigente_en(senda, fecha_mas_reciente_texto)
+
+    if resultado["senda_referencia_actual"] is not None:
+        resultado["embalses_diferencia_vs_senda_puntos"] = (
+            resultado["embalses_porcentaje_actual"] - resultado["senda_referencia_actual"]
+        )
+    else:
+        resultado["embalses_diferencia_vs_senda_puntos"] = None
 
     # ---------- Aportes ----------
     resultado["aportes_porcentaje_actual"] = fila_mas_reciente["aportes_porcentaje"]
@@ -160,6 +198,20 @@ def generar_comentario_hidrologia(estadisticas):
     else:
         partes.append("Los embalses se encuentran en " + "{:.2f}".format(estadisticas["embalses_porcentaje_actual"] * 100) + "% de su capacidad util.")
 
+    # Comentario de Embalse SIN% vs Senda de Referencia
+    if estadisticas["embalses_diferencia_vs_senda_puntos"] is not None:
+        diferencia_puntos = estadisticas["embalses_diferencia_vs_senda_puntos"] * 100
+        senda_pct = estadisticas["senda_referencia_actual"] * 100
+
+        if diferencia_puntos > 0.01:
+            posicion = "por encima de la Senda de Referencia en " + "{:.2f}".format(abs(diferencia_puntos)) + " puntos porcentuales"
+        elif diferencia_puntos < -0.01:
+            posicion = "por debajo de la Senda de Referencia en " + "{:.2f}".format(abs(diferencia_puntos)) + " puntos porcentuales"
+        else:
+            posicion = "practicamente igual a la Senda de Referencia"
+
+        partes.append("El nivel de Embalse SIN se encuentra " + posicion + " (la Senda de Referencia vigente hoy es de " + "{:.2f}".format(senda_pct) + "%).")
+
     # Comentario de aportes vs media historica
     if estadisticas["aportes_porcentaje_vs_media_historica"] is not None:
         porcentaje_vs_media = estadisticas["aportes_porcentaje_vs_media_historica"]
@@ -197,6 +249,9 @@ if __name__ == "__main__":
         if estadisticas["embalses_variacion_anual_puntos"] is not None:
             print("  Variacion vs mismo periodo año anterior: " + "{:+.2f}".format(estadisticas["embalses_variacion_anual_puntos"] * 100) + " puntos porcentuales")
         print("  Tendencia 30 dias: " + estadisticas["tendencia_embalses_30_dias"])
+        if estadisticas["senda_referencia_actual"] is not None:
+            print("  Senda de Referencia vigente: " + "{:.2f}".format(estadisticas["senda_referencia_actual"] * 100) + "%")
+            print("  Diferencia vs Senda de Referencia: " + "{:+.2f}".format(estadisticas["embalses_diferencia_vs_senda_puntos"] * 100) + " puntos porcentuales")
 
         print("")
         print("APORTES")

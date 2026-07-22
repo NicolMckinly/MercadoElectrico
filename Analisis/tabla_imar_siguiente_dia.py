@@ -3,16 +3,20 @@ Modulo: tabla_imar_siguiente_dia.py
 Ubicacion: Analisis/tabla_imar_siguiente_dia.py
 
 Genera la tabla del IMAR periodo a periodo (24 horas) para el dia
-siguiente, incluyendo una version "ajustada" que corrige el IMAR
-crudo usando la desviacion promedio observada entre el Precio de
-Bolsa real y el IMAR en los ultimos dias donde ambos datos existan
-para la misma fecha.
+siguiente, junto con el "Precio de Bolsa Proyectado", que se calcula
+asi, HORA POR HORA:
 
-El ajuste se calcula HORA POR HORA (no un solo numero para todo el
-dia), usando los ultimos 3 dias disponibles donde ya exista tanto
-el precio real como el IMAR para esa misma fecha. Esto sirve para
-identificar en que horas del dia el IMAR tiende a desviarse mas del
-precio real.
+    PB_proyectado = promedio( promedio_ultimos_3_dias(Precio de
+    Bolsa real) , promedio_ultimos_3_dias(IMAR) )
+
+Es decir: se promedian los ultimos 3 dias DISPONIBLES de Precio de
+Bolsa real (sin importar que fecha sea), se promedian por separado
+los ultimos 3 dias DISPONIBLES de IMAR (tambien sin importar la
+fecha, y sin incluir el IMAR crudo de "mañana" que se esta
+proyectando), y luego se promedian esos dos resultados entre si.
+Como cada promedio usa "los ultimos disponibles" en el momento de
+la corrida, el calculo se va corriendo solo, dia a dia, a medida
+que ambas variables se actualizan.
 
 "Mañana" se calcula con ahora_colombia() (ver BaseDatos/zona_horaria.py)
 en vez de datetime.now(), para que siempre se use la hora real de
@@ -39,73 +43,65 @@ COLUMNAS_HORA = [
     "hora_19", "hora_20", "hora_21", "hora_22", "hora_23", "hora_24"
 ]
 
-CANTIDAD_DIAS_PARA_EL_AJUSTE = 3
+CANTIDAD_DIAS_PARA_EL_PROMEDIO = 3
 
 
-def calcular_factores_de_ajuste_por_hora():
+def calcular_pb_proyectado_por_hora(fecha_manana):
     """
-    Calcula, para cada una de las 24 horas, el factor promedio de
-    ajuste entre el Precio de Bolsa real y el IMAR, usando los
-    ultimos N dias donde ambos datos existan para la misma fecha.
-
-    El factor es multiplicativo: factor = precio_real / imar_crudo,
-    promediado sobre los dias disponibles. Un factor de 1.05, por
-    ejemplo, significa que en promedio el precio real termino siendo
-    un 5% mas alto que lo que el IMAR habia anticipado en esa hora.
+    Calcula, para cada una de las 24 horas, el Precio de Bolsa
+    Proyectado: el promedio entre (a) el promedio de los ultimos 3
+    dias DISPONIBLES de Precio de Bolsa real, y (b) el promedio de
+    los ultimos 3 dias DISPONIBLES de IMAR (sin contar el IMAR crudo
+    del dia que se esta proyectando). Cada variable usa sus propios
+    ultimos dias disponibles, sin necesidad de que coincidan en
+    fecha entre si.
 
     Retorna:
-        Un diccionario {nombre_columna_hora: factor}, o None si no
-        hay suficientes dias con ambos datos disponibles.
+        Un diccionario {nombre_columna_hora: valor_proyectado}, o
+        None si no hay suficientes datos todavia.
     """
     precio_bolsa = consultar_todo_precio_bolsa()
     imar = consultar_todo_imar()
 
-    fechas_con_ambos_datos = sorted(
-        set(precio_bolsa["fecha"]).intersection(set(imar["fecha"])),
-        reverse=True
-    )
-
-    if len(fechas_con_ambos_datos) == 0:
-        print("Aun no hay ningun dia con Precio de Bolsa real e IMAR para la misma fecha. No se puede calcular el ajuste todavia.")
+    if len(precio_bolsa) == 0 or len(imar) == 0:
+        print("Aun no hay suficiente historico de Precio de Bolsa y/o IMAR para calcular la proyeccion.")
         return None
 
-    fechas_a_usar = fechas_con_ambos_datos[:CANTIDAD_DIAS_PARA_EL_AJUSTE]
+    # Ultimos 3 dias disponibles de Precio de Bolsa real (los mas recientes)
+    precio_bolsa_ultimos_3 = precio_bolsa.sort_values("fecha", ascending=False).head(CANTIDAD_DIAS_PARA_EL_PROMEDIO)
 
-    precio_bolsa_indexado = precio_bolsa.set_index("fecha")
-    imar_indexado = imar.set_index("fecha")
+    # Ultimos 3 dias disponibles de IMAR, SIN incluir el IMAR crudo del
+    # dia que se esta proyectando (fecha_manana), para no usar el dato
+    # que justamente estamos tratando de proyectar.
+    imar_historico = imar[imar["fecha"] < fecha_manana]
+    imar_ultimos_3 = imar_historico.sort_values("fecha", ascending=False).head(CANTIDAD_DIAS_PARA_EL_PROMEDIO)
 
-    factores = {}
+    if len(precio_bolsa_ultimos_3) == 0 or len(imar_ultimos_3) == 0:
+        print("Aun no hay suficiente historico para calcular la proyeccion.")
+        return None
+
+    pb_proyectado = {}
 
     for columna in COLUMNAS_HORA:
-        razones_de_esta_hora = []
+        promedio_precio_bolsa = precio_bolsa_ultimos_3[columna].mean()
+        promedio_imar = imar_ultimos_3[columna].mean()
+        pb_proyectado[columna] = (promedio_precio_bolsa + promedio_imar) / 2
 
-        for fecha in fechas_a_usar:
-            valor_real = precio_bolsa_indexado.loc[fecha, columna]
-            valor_imar = imar_indexado.loc[fecha, columna]
-
-            if valor_imar != 0:
-                razones_de_esta_hora.append(valor_real / valor_imar)
-
-        if len(razones_de_esta_hora) > 0:
-            factores[columna] = sum(razones_de_esta_hora) / len(razones_de_esta_hora)
-        else:
-            factores[columna] = 1.0
-
-    return factores
+    return pb_proyectado
 
 
 def obtener_tabla_imar_siguiente_dia():
     """
     Arma la tabla del IMAR del dia siguiente, periodo a periodo,
-    con su version ajustada.
+    junto con el Precio de Bolsa Proyectado.
 
     Retorna:
         Un diccionario con:
         - "fecha": la fecha del dia que se esta mostrando
         - "filas": una lista de 24 diccionarios, uno por periodo,
-          con "periodo", "imar_crudo", "imar_ajustado"
-        - "dias_usados_para_el_ajuste": cuantos dias se usaron para
-          calcular el ajuste (para ser transparentes sobre la
+          con "periodo", "imar_crudo", "pb_proyectado"
+        - "dias_usados_para_el_promedio": cuantos dias se usaron
+          como base del promedio (para ser transparentes sobre la
           confiabilidad del calculo)
         O None si no hay datos de IMAR disponibles para el dia siguiente.
     """
@@ -123,17 +119,17 @@ def obtener_tabla_imar_siguiente_dia():
         print("Aun no esta publicado el IMAR de manana (" + manana + ").")
         return None
 
-    factores = calcular_factores_de_ajuste_por_hora()
+    pb_proyectado_por_hora = calcular_pb_proyectado_por_hora(manana)
 
     filas = []
     for numero_hora in range(24):
         columna = COLUMNAS_HORA[numero_hora]
         valor_crudo = imar_indexado.loc[manana, columna]
 
-        if factores is not None:
-            valor_ajustado = valor_crudo * factores[columna]
+        if pb_proyectado_por_hora is not None:
+            valor_proyectado = pb_proyectado_por_hora[columna]
         else:
-            valor_ajustado = valor_crudo
+            valor_proyectado = valor_crudo
 
         hora_inicio = str(numero_hora).zfill(2) + ":00"
         hora_fin = str(numero_hora).zfill(2) + ":59"
@@ -141,17 +137,15 @@ def obtener_tabla_imar_siguiente_dia():
         filas.append({
             "periodo": "P" + str(numero_hora + 1).zfill(2) + ": " + hora_inicio + "-" + hora_fin,
             "imar_crudo": valor_crudo,
-            "imar_ajustado": valor_ajustado
+            "pb_proyectado": valor_proyectado
         })
 
-    precio_bolsa = consultar_todo_precio_bolsa()
-    dias_usados = len(set(precio_bolsa["fecha"]).intersection(set(imar["fecha"])))
-    dias_usados = min(dias_usados, CANTIDAD_DIAS_PARA_EL_AJUSTE)
+    dias_usados = min(len(consultar_todo_precio_bolsa()), CANTIDAD_DIAS_PARA_EL_PROMEDIO)
 
     return {
         "fecha": manana,
         "filas": filas,
-        "dias_usados_para_el_ajuste": dias_usados
+        "dias_usados_para_el_promedio": dias_usados
     }
 
 
@@ -160,9 +154,9 @@ if __name__ == "__main__":
 
     if resultado is not None:
         print("IMAR para el dia: " + resultado["fecha"])
-        print("Ajuste calculado con " + str(resultado["dias_usados_para_el_ajuste"]) + " dia(s) de historial cruzado.")
+        print("Proyeccion calculada con hasta " + str(resultado["dias_usados_para_el_promedio"]) + " dia(s) de historial de cada variable.")
         print("")
-        print("{:<20} {:>15} {:>15}".format("Periodo", "IMAR crudo", "IMAR ajustado"))
+        print("{:<20} {:>15} {:>18}".format("Periodo", "IMAR", "PB Proyectado"))
 
         for fila in resultado["filas"]:
-            print("{:<20} {:>15.2f} {:>15.2f}".format(fila["periodo"], fila["imar_crudo"], fila["imar_ajustado"]))
+            print("{:<20} {:>15.2f} {:>18.2f}".format(fila["periodo"], fila["imar_crudo"], fila["pb_proyectado"]))

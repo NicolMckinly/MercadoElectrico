@@ -21,7 +21,7 @@ jobs:
           echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
           echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
       - name: PRUEBA - Regenerar informe hidrologico
-        run: python main_hidrologico.py
+        run: python prueba_informe_hidrologico.py
       - name: PRUEBA - Guardar informe hidrologico
         run: |
           git config --global user.name "Sistema Automatico"

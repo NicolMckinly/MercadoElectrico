@@ -134,7 +134,7 @@ def generar_grafico_generacion():
     ejes.set_xlabel("Fecha")
     ejes.xaxis.set_major_locator(mdates.DayLocator(interval=1))
     ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_dia_mes_en_espanol))
-    plt.setp(ejes.get_xticklabels(), rotation=0, ha="center", fontsize=7)
+    plt.setp(ejes.get_xticklabels(), rotation=90, ha="center", fontsize=8)
     ejes.grid(True, linestyle="--", alpha=0.3)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2, frameon=False)
     figura.tight_layout()

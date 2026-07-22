@@ -66,6 +66,33 @@ def _formatear_mes_anio_en_espanol(valor_x, posicion=None):
     return MESES_ABREVIADOS_ESPANOL[fecha.month] + "-" + fecha.strftime("%y")
 
 
+def _formatear_dia_mes_en_espanol(valor_x, posicion=None):
+    """
+    Formateador personalizado para el eje X: convierte la fecha
+    numerica interna de matplotlib en "Dia-Mes" abreviado en
+    espanol (20-Jul, 21-Jul...), sin depender del idioma instalado
+    en el servidor.
+    """
+    fecha = mdates.num2date(valor_x)
+    return str(fecha.day) + "-" + MESES_ABREVIADOS_ESPANOL[fecha.month]
+
+
+def _dia_20_del_mes_anterior(fecha):
+    """
+    Calcula el dia 20 del mes calendario anterior al de la fecha
+    dada. Se usa como inicio de la ventana movil de la grafica de
+    Generacion por Fuente (version corta, para el informe
+    hidrologico semanal): cada mes la ventana arranca en el dia 20
+    del mes anterior y avanza sola con el paso del tiempo.
+    """
+    anio = fecha.year
+    mes_anterior = fecha.month - 1
+    if mes_anterior == 0:
+        mes_anterior = 12
+        anio -= 1
+    return datetime(anio, mes_anterior, 20)
+
+
 def generar_grafico_generacion():
     """
     Genera el grafico de areas apiladas de Generacion por Fuente, de
@@ -73,10 +100,20 @@ def generar_grafico_generacion():
     Retorna:
         La ruta del archivo generado, o None si no hay datos.
     """
+    hoy = ahora_colombia()
+    fecha_inicio_texto = _dia_20_del_mes_anterior(hoy).strftime("%Y-%m-%d")
+    fecha_fin_texto = hoy.strftime("%Y-%m-%d")
+
     datos = consultar_todo_generacion_por_fuente()
     if len(datos) == 0:
         print("No hay datos de generacion por fuente disponibles todavia.")
         return None
+
+    datos = datos[(datos["fecha"] >= fecha_inicio_texto) & (datos["fecha"] <= fecha_fin_texto)]
+    if len(datos) == 0:
+        print("No hay datos de generacion por fuente en la ventana del mes.")
+        return None
+
     datos["fecha_dt"] = datos["fecha"].apply(lambda f: datetime.strptime(f, "%Y-%m-%d"))
     datos["valor_gwh"] = datos["valor_kwh"] / 1_000_000
     tabla_pivote = datos.pivot(index="fecha_dt", columns="tecnologia", values="valor_gwh")
@@ -84,7 +121,7 @@ def generar_grafico_generacion():
     tecnologias_presentes = [t for t in ORDEN_TECNOLOGIAS if t in tabla_pivote.columns]
     colores = [COLORES_TECNOLOGIA.get(t, "#CCCCCC") for t in tecnologias_presentes]
     etiquetas = [ETIQUETAS_MOSTRAR.get(t, t) for t in tecnologias_presentes]
-    figura, ejes = plt.subplots(figsize=(11, 5.5))
+    figura, ejes = plt.subplots(figsize=(16, 5.5))
     ejes.stackplot(
         tabla_pivote.index,
         [tabla_pivote[t] for t in tecnologias_presentes],
@@ -95,7 +132,9 @@ def generar_grafico_generacion():
     ejes.set_title("Generacion por fuente", fontsize=13, fontweight="bold")
     ejes.set_ylabel("GWh")
     ejes.set_xlabel("Fecha")
-    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d-%b"))
+    ejes.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+    ejes.xaxis.set_major_formatter(FuncFormatter(_formatear_dia_mes_en_espanol))
+    plt.setp(ejes.get_xticklabels(), rotation=0, ha="center", fontsize=7)
     ejes.grid(True, linestyle="--", alpha=0.3)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=2, frameon=False)
     figura.tight_layout()

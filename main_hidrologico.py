@@ -39,7 +39,7 @@ from zona_horaria import ahora_colombia
 
 # Destinatarios adicionales que reciben UNICAMENTE el informe
 # hidrologico, ademas del correo principal configurado en el .env.
-CORREOS_ADICIONALES_HIDROLOGICO = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com"]
+CORREOS_ADICIONALES_HIDROLOGICO = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com", "edwin.simales@tmmorro.com", "jcarrillo@colombiainfra.com"]
 
 
 def ejecutar_proceso_hidrologico():

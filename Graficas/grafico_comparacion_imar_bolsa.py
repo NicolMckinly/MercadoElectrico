@@ -5,9 +5,11 @@ Ubicacion: Graficas/grafico_comparacion_imar_bolsa.py
 Genera el grafico de linea comparando, dia a dia, el promedio del
 IMAR (linea amarilla punteada) contra el promedio del Precio de
 Bolsa real (linea azul solida), para el mes vigente (desde el dia 1
-hasta hoy), e incluye tambien el Precio de Escasez vigente como
-linea de referencia (roja, punteada), con su etiqueta de valor
-dentro del area del grafico.
+hasta HOY para el Precio de Bolsa real, y hasta MAÑANA para el IMAR,
+ya que el IMAR del dia siguiente ya esta publicado con anticipacion),
+e incluye tambien el Precio de Escasez vigente como linea de
+referencia (roja, punteada), con su etiqueta de valor dentro del
+area del grafico.
 
 A diferencia del grafico mensual (grafico_mensual.py), que combina
 ambas fuentes en UNA sola linea (usando IMAR solo cuando falta el
@@ -29,6 +31,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import pandas as pd
+from datetime import timedelta
 
 CARPETA_PROYECTO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Analisis"))
@@ -56,16 +59,20 @@ MESES_EN_ESPANOL = {
 def generar_grafico_comparacion_imar_bolsa():
     """
     Genera y guarda el grafico comparativo IMAR vs Precio de Bolsa
-    real, del mes vigente (dia 1 hasta hoy, hora Colombia), con el
-    Precio de Escasez vigente como linea de referencia.
+    real, del mes vigente (dia 1 hasta hoy para el Precio de Bolsa
+    real, dia 1 hasta MAÑANA para el IMAR, ya que ese dato ya esta
+    publicado con anticipacion), con el Precio de Escasez vigente
+    como linea de referencia.
 
     Retorna:
         La ruta del archivo de imagen generado, o None si no hay
         datos disponibles todavia para el mes.
     """
     hoy = ahora_colombia()
+    manana = hoy + timedelta(days=1)
     primer_dia_del_mes = hoy.replace(day=1).strftime("%Y-%m-%d")
     fecha_hoy_texto = hoy.strftime("%Y-%m-%d")
+    fecha_manana_texto = manana.strftime("%Y-%m-%d")
 
     precio_bolsa = consultar_todo_precio_bolsa()
     imar = consultar_todo_imar()
@@ -73,8 +80,12 @@ def generar_grafico_comparacion_imar_bolsa():
     precio_bolsa_mes = precio_bolsa[
         (precio_bolsa["fecha"] >= primer_dia_del_mes) & (precio_bolsa["fecha"] <= fecha_hoy_texto)
     ].copy()
+    # El IMAR incluye tambien "mañana" (fecha_manana_texto), porque el
+    # IMAR del dia siguiente ya esta publicado por XM con anticipacion,
+    # a diferencia del Precio de Bolsa real (que solo existe para dias
+    # que ya pasaron).
     imar_mes = imar[
-        (imar["fecha"] >= primer_dia_del_mes) & (imar["fecha"] <= fecha_hoy_texto)
+        (imar["fecha"] >= primer_dia_del_mes) & (imar["fecha"] <= fecha_manana_texto)
     ].copy()
 
     if len(precio_bolsa_mes) == 0 and len(imar_mes) == 0:

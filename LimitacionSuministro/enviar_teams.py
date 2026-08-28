@@ -11,22 +11,22 @@ import requests
 
 
 def _fila_tabla(status, actividad, nombre, es_encabezado=False, es_titulo_status=False):
-    """Crea una fila de la tabla Adaptive Card con 3 columnas."""
+    """Crea una fila de la tabla Adaptive Card con 3 columnas (letra pequeña)."""
     peso = "Bolder" if (es_encabezado or es_titulo_status) else "Default"
     return {
         "type": "TableRow",
         "cells": [
             {
                 "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": status, "wrap": True, "weight": peso}],
+                "items": [{"type": "TextBlock", "text": status, "wrap": True, "weight": peso, "size": "Small"}],
             },
             {
                 "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": actividad, "wrap": True, "weight": peso}],
+                "items": [{"type": "TextBlock", "text": actividad, "wrap": True, "weight": peso, "size": "Small"}],
             },
             {
                 "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": nombre, "wrap": True, "weight": peso}],
+                "items": [{"type": "TextBlock", "text": nombre, "wrap": True, "weight": peso, "size": "Small"}],
             },
         ],
     }
@@ -59,7 +59,7 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
     datos_corte_usuarios / datos_en_bolsa: dicts con "iniciados" y
         "cancelados" (listas de tuplas (actividad, empresa)).
     """
-    columnas = [{"width": 1}, {"width": 1}, {"width": 2}]
+    columnas = [{"width": 1}, {"width": 1.3}, {"width": 3}]
 
     cuerpo = [
         {
@@ -73,25 +73,29 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
             "type": "TextBlock",
             "text": "LIMITACIÓN DE SUMINISTRO CON CORTE A USUARIOS",
             "weight": "Bolder",
+            "size": "Small",
             "wrap": True,
-            "spacing": "Medium",
+            "spacing": "Small",
         },
         {
             "type": "Table",
             "columns": columnas,
             "rows": _construir_tabla_seccion("ÚLTIMOS INICIADOS", datos_corte_usuarios["iniciados"]),
             "firstRowAsHeaders": False,
+            "spacing": "Small",
         },
         {
             "type": "Table",
             "columns": columnas,
             "rows": _construir_tabla_seccion("ÚLTIMOS CANCELADOS", datos_corte_usuarios["cancelados"]),
             "firstRowAsHeaders": False,
+            "spacing": "None",
         },
         {
             "type": "TextBlock",
             "text": "LIMITACIÓN DE SUMINISTRO EN BOLSA",
             "weight": "Bolder",
+            "size": "Small",
             "wrap": True,
             "spacing": "Medium",
         },
@@ -100,12 +104,14 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
             "columns": columnas,
             "rows": _construir_tabla_seccion("ÚLTIMOS INICIADOS", datos_en_bolsa["iniciados"]),
             "firstRowAsHeaders": False,
+            "spacing": "Small",
         },
         {
             "type": "Table",
             "columns": columnas,
             "rows": _construir_tabla_seccion("ÚLTIMOS CANCELADOS", datos_en_bolsa["cancelados"]),
             "firstRowAsHeaders": False,
+            "spacing": "None",
         },
     ]
 
@@ -114,6 +120,7 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
         "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
         "version": "1.5",
         "body": cuerpo,
+        "msteams": {"width": "Full"},
     }
 
     return {

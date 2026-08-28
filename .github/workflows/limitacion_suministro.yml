@@ -2,8 +2,8 @@ name: Limitación de suministro semanal
 
 on:
   schedule:
-    # 13:00 UTC = 8:00 a.m. hora Colombia, todos los jueves
-    - cron: "0 13 * * 4"
+    # 17:00 UTC = 12:00 m. (mediodía) hora Colombia, todos los viernes
+    - cron: "0 17 * * 5"
   workflow_dispatch: {}  # permite lanzarlo manualmente desde la pestaña Actions, para probar
 
 jobs:

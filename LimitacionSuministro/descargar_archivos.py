@@ -6,11 +6,15 @@ localiza los dos archivos que necesitamos (identificándolos por texto,
 no por posición, para que no se rompa si cambian el orden) y los
 descarga.
 
-NOTA para Nicol: esta es la parte que con más probabilidad necesite un
-ajuste fino la primera vez que la corramos, porque la tabla de archivos
-se carga con JavaScript y no puedo probarla en vivo desde aquí. Si falla,
-el workflow de GitHub Actions guarda una captura de pantalla y el HTML
-completo de la página como "artifacts" para que los revisemos juntas.
+NOTA para Nicol: la tabla de archivos de esa página no es HTML normal,
+es un componente Angular (explorador-archivos-component) que dibuja su
+contenido dentro de un "Shadow DOM" — una especie de caja aparte dentro
+de la página, invisible para las búsquedas normales de Selenium aunque
+se vea perfecto en pantalla. Por eso usamos JavaScript para buscar
+"atravesando" esas cajas en vez del buscador normal de Selenium.
+
+Si algo falla, el workflow de GitHub Actions guarda una captura de
+pantalla y el HTML completo de la página como "artifacts" para revisar.
 """
 
 import os
@@ -18,8 +22,8 @@ import time
 import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
@@ -37,6 +41,34 @@ UA_REALISTA = (
     "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
 
+# Script que recorre TODO el documento, incluyendo cualquier Shadow DOM
+# anidado (sin importar cuántos niveles), buscando enlaces <a> cuyo
+# texto contenga "descargar". Devuelve una lista de {href, texto_fila}.
+JS_BUSCAR_ENLACES_DESCARGA = """
+function buscar(raiz, resultados) {
+    const anclas = raiz.querySelectorAll('a');
+    anclas.forEach(a => {
+        const texto = (a.textContent || '').trim().toLowerCase();
+        if (texto.includes('descargar') && a.href) {
+            let fila = a.closest('tr') || a.closest('[class*="row"]') || a.parentElement;
+            resultados.push({
+                href: a.href,
+                texto_fila: fila ? fila.textContent.trim() : a.textContent.trim()
+            });
+        }
+    });
+    const todos = raiz.querySelectorAll('*');
+    todos.forEach(el => {
+        if (el.shadowRoot) {
+            buscar(el.shadowRoot, resultados);
+        }
+    });
+}
+const resultados = [];
+buscar(document, resultados);
+return resultados;
+"""
+
 
 def _crear_navegador():
     opciones = Options()
@@ -45,7 +77,6 @@ def _crear_navegador():
     opciones.add_argument("--disable-dev-shm-usage")
     opciones.add_argument("--window-size=1600,1200")
     opciones.add_argument(f"--user-agent={UA_REALISTA}")
-    # Intentar que la página no detecte que es un navegador automatizado
     opciones.add_argument("--disable-blink-features=AutomationControlled")
     opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
     opciones.add_experimental_option("useAutomationExtension", False)
@@ -80,51 +111,30 @@ def _guardar_diagnostico(navegador, sufijo=""):
         pass
 
 
-def _obtener_enlaces_descarga(navegador):
+def _obtener_enlaces_descarga(navegador, tiempo_maximo=60, intervalo=2):
     """
-    Devuelve un diccionario {texto_visible_de_la_fila: url_descarga}
-    buscando cada enlace de texto "Descargar" y mirando el texto de su
-    fila para identificar a qué archivo corresponde.
+    Va preguntándole a la página (con JavaScript) por los enlaces de
+    "Descargar", atravesando cualquier Shadow DOM, hasta que aparezcan
+    o se agote el tiempo máximo.
+
+    Devuelve un diccionario {texto_visible_de_la_fila: url_descarga}.
     """
-    try:
-        espera = WebDriverWait(navegador, 45)
-        espera.until(EC.presence_of_element_located((By.PARTIAL_LINK_TEXT, "Descargar")))
-    except TimeoutException:
-        # No encontramos ningún link "Descargar" en 45s: guardamos todo
-        # lo que se pueda para diagnosticar (screenshot + HTML completo).
-        _guardar_diagnostico(navegador)
-        print(f"Título de la página cargada: {navegador.title}")
-        print(f"URL actual: {navegador.current_url}")
-        raise
+    tiempo_transcurrido = 0
+    while tiempo_transcurrido < tiempo_maximo:
+        resultados = navegador.execute_script(JS_BUSCAR_ENLACES_DESCARGA)
+        if resultados:
+            return {r["texto_fila"]: r["href"] for r in resultados}
+        time.sleep(intervalo)
+        tiempo_transcurrido += intervalo
 
-    # Pequeña pausa extra: a veces la tabla sigue poblándose después del
-    # primer enlace visible.
-    time.sleep(2)
-
-    enlaces = navegador.find_elements(By.PARTIAL_LINK_TEXT, "Descargar")
-
-    resultado = {}
-    for enlace in enlaces:
-        href = enlace.get_attribute("href")
-        if not href:
-            continue
-
-        texto_fila = ""
-        # Intentamos varias formas de encontrar el contenedor de la fila,
-        # porque no sabemos de antemano si es una tabla <tr> o divs.
-        for xpath_ancestro in ["./ancestor::tr[1]", "./ancestor::div[contains(@class,'row')][1]",
-                                "./ancestor::div[1]/.."]:
-            try:
-                fila = enlace.find_element(By.XPATH, xpath_ancestro)
-                texto_fila = fila.text
-                if texto_fila.strip():
-                    break
-            except Exception:
-                continue
-
-        resultado[texto_fila] = href
-
-    return resultado
+    # No apareció nada en el tiempo máximo: guardamos diagnóstico.
+    _guardar_diagnostico(navegador)
+    print(f"Título de la página cargada: {navegador.title}")
+    print(f"URL actual: {navegador.current_url}")
+    raise TimeoutException(
+        f"No se encontró ningún enlace 'Descargar' en {tiempo_maximo} segundos "
+        f"(ni siquiera atravesando Shadow DOM)."
+    )
 
 
 def descargar_archivos(carpeta_destino="."):
@@ -143,9 +153,6 @@ def descargar_archivos(carpeta_destino="."):
 
         enlaces_por_fila = _obtener_enlaces_descarga(navegador)
 
-        # Cookies de la sesión del navegador, por si el archivo requiere
-        # la misma sesión para descargarse (normalmente no hace falta,
-        # pero así queda más robusto).
         cookies = {c["name"]: c["value"] for c in navegador.get_cookies()}
         agente = navegador.execute_script("return navigator.userAgent;")
 
@@ -157,8 +164,6 @@ def descargar_archivos(carpeta_destino="."):
                     break
 
             if url_encontrada is None:
-                # Guardamos diagnóstico completo para poder ver qué
-                # archivos sí se detectaron y por qué no coincidió.
                 _guardar_diagnostico(navegador, sufijo="_no_encontrado")
                 print("Filas de archivo detectadas en la página:")
                 for texto_fila in enlaces_por_fila:

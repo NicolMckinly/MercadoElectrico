@@ -64,7 +64,7 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
     cuerpo = [
         {
             "type": "TextBlock",
-            "text": f"Limitación de suministro – últimos 8 días (al {fecha_texto})",
+            "text": f"Revisión PLS {fecha_texto}",
             "weight": "Bolder",
             "size": "Medium",
             "wrap": True,

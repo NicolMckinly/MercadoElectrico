@@ -31,10 +31,12 @@ jobs:
           TEAMS_WEBHOOK_LIMITACION: ${{ secrets.TEAMS_WEBHOOK_LIMITACION }}
         run: python main_limitacion.py
 
-      - name: Guardar captura de pantalla si algo falló
+      - name: Guardar diagnóstico si algo falló
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: captura-error
-          path: LimitacionSuministro/error_no_encontrado.png
+          name: diagnostico-error
+          path: |
+            LimitacionSuministro/error_diagnostico*.png
+            LimitacionSuministro/error_pagina*.html
           if-no-files-found: ignore

@@ -57,13 +57,17 @@ jobs:
       - name: Revisar Resumen Ejecutivo Quincenal
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python main_ejecutivo.py
+      - name: Limpiar reportes viejos
+        if: steps.ventana.outputs.ejecutar == 'true'
+        run: python limpiar_reportes_viejos.py
       - name: Guardar cambios en el repositorio
         if: steps.ventana.outputs.ejecutar == 'true'
         run: |
           git config --global user.name "Sistema Automatico"
           git config --global user.email "sistema@mercadoelectrico.local"
           git config --global pull.rebase false
-          git add -f BaseDatos/mercado_electrico.db Reportes/*.pdf Graficas/*.png
+          git add -f BaseDatos/mercado_electrico.db Graficas/*.png
+          git add -A Reportes/
           git commit -m "Actualizacion automatica $(date +'%Y-%m-%d %H:%M')" || echo "No hay cambios nuevos para guardar"
           git pull origin master --no-edit -X ours
           git push

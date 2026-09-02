@@ -1,0 +1,33 @@
+name: Alerta IPP DANE
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 13 * * *'
+jobs:
+  revisar_ipp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: |
+          pip install requests python-dotenv
+      - name: Crear archivo de credenciales
+        run: |
+          echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
+          echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
+      - name: Revisar si el DANE publico el IPP
+        run: python revisar_ipp_dane.py
+      - name: Guardar estado en el repositorio
+        run: |
+          git config --global user.name "Sistema Automatico"
+          git config --global user.email "sistema@mercadoelectrico.local"
+          git config --global pull.rebase false
+          git add -f Estado/estado_ipp.json
+          git commit -m "Actualizacion estado IPP DANE $(date +'%Y-%m-%d %H:%M')" || echo "No hay cambios nuevos para guardar"
+          git pull origin master --no-edit -X ours
+          git push

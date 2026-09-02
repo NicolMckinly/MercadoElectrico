@@ -6,8 +6,9 @@ detecta, envia un correo de notificacion.
 Logica:
 - El DANE publica cada mes el IPP del mes ANTERIOR (con rezago de unos
   dias). Por ejemplo, a comienzos de septiembre se publica el IPP de agosto.
-- El nombre del archivo sigue el patron: bol_ipp_<mes_abrev><aa>.pdf
-  Ejemplos: bol_ipp_jul26.pdf, bol_ipp_ago26.pdf
+- El DANE ha usado distintos patrones de nombre de archivo a lo largo de
+  los anios, y a veces agrega una subcarpeta por mes. Por eso este script
+  prueba varias URLs candidatas y usa la primera que responda.
 - Se guarda en Estado/estado_ipp.json cual fue el ultimo mes ya notificado,
   para no enviar el correo mas de una vez por mes.
 """
@@ -48,10 +49,22 @@ def mes_objetivo() -> tuple[int, int]:
     return ultimo_dia_mes_anterior.year, ultimo_dia_mes_anterior.month
 
 
-def url_boletin(anio: int, mes: int) -> str:
+def urls_candidatas(anio: int, mes: int) -> list[str]:
+    """Genera varias URLs posibles, porque el DANE ha cambiado el patron
+    de nombres de archivo con el tiempo. Se prueban de la mas reciente
+    conocida a la mas antigua."""
     abrev = MESES_ABREV[mes]
     aa = str(anio)[-2:]
-    return f"https://www.dane.gov.co/files/investigaciones/boletines/ipp/bol_ipp_{abrev}{aa}.pdf"
+    mes_anio = f"{abrev}{anio}"  # ej: ago2026
+
+    return [
+        # Patron 2026 (con subcarpeta por mes, visto en IPC)
+        f"https://www.dane.gov.co/files/operaciones/IPP/{mes_anio}/bol-IPP-{mes_anio}.pdf",
+        # Patron 2023-2025 (sin subcarpeta)
+        f"https://www.dane.gov.co/files/operaciones/IPP/bol-IPP-{mes_anio}.pdf",
+        # Patron antiguo 2021-2022
+        f"https://www.dane.gov.co/files/investigaciones/boletines/ipp/bol_ipp_{abrev}{aa}.pdf",
+    ]
 
 
 def cargar_estado() -> dict:
@@ -65,7 +78,7 @@ def guardar_estado(estado: dict) -> None:
     ARCHIVO_ESTADO.write_text(json.dumps(estado, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def boletin_publicado(url: str) -> bool:
+def url_publicada(url: str) -> bool:
     try:
         resp = requests.head(url, timeout=15, allow_redirects=True)
         if resp.status_code == 200:
@@ -75,6 +88,14 @@ def boletin_publicado(url: str) -> bool:
         return resp.status_code == 200
     except requests.RequestException:
         return False
+
+
+def buscar_boletin_publicado(anio: int, mes: int) -> str | None:
+    for url in urls_candidatas(anio, mes):
+        print(f"Revisando: {url}")
+        if url_publicada(url):
+            return url
+    return None
 
 
 def enviar_correo(anio: int, mes: int, url: str) -> None:
@@ -110,17 +131,16 @@ def main() -> None:
         print(f"El IPP de {clave_mes} ya fue notificado antes. No se hace nada.")
         return
 
-    url = url_boletin(anio, mes)
-    print(f"Revisando: {url}")
+    url_encontrada = buscar_boletin_publicado(anio, mes)
 
-    if boletin_publicado(url):
-        print("¡Boletin encontrado! Enviando correo...")
-        enviar_correo(anio, mes, url)
+    if url_encontrada:
+        print(f"¡Boletin encontrado en {url_encontrada}! Enviando correo...")
+        enviar_correo(anio, mes, url_encontrada)
         estado["ultimo_mes_notificado"] = clave_mes
         guardar_estado(estado)
         print("Correo enviado y estado actualizado.")
     else:
-        print(f"El IPP de {clave_mes} todavia no ha sido publicado.")
+        print(f"El IPP de {clave_mes} todavia no ha sido publicado (o cambio de URL otra vez).")
 
 
 if __name__ == "__main__":

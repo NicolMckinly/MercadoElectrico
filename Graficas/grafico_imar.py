@@ -12,8 +12,9 @@ El titulo del grafico incluye la fecha del dia que se esta mostrando
 el servidor donde corre el sistema (GitHub Actions) no tiene
 instalado el idioma espanol.
 
-El eje Y siempre parte desde 0, para que todas las graficas del
-informe compartan la misma base de referencia visual.
+El eje Y siempre va de 0 a 1200 $/kWh, para que todas las graficas
+del informe compartan la misma base y el mismo techo de referencia
+visual.
 
 El grafico se guarda como imagen .png dentro de esta misma carpeta.
 """
@@ -92,9 +93,9 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
     ejes.grid(True, linestyle="--", alpha=0.3)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2, frameon=False)
 
-    # El eje Y siempre parte desde 0, para compartir la misma base
-    # visual con las demas graficas del informe.
-    ejes.set_ylim(bottom=0)
+    # El eje Y siempre va de 0 a 1200 $/kWh, para compartir la misma
+    # base y el mismo techo visual con las demas graficas del informe.
+    ejes.set_ylim(0, 1200)
 
     # Mas espacio abajo para que la leyenda no se encime con las
     # etiquetas del eje X.

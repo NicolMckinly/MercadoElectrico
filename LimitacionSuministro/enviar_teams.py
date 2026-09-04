@@ -59,7 +59,7 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
     datos_corte_usuarios / datos_en_bolsa: dicts con "iniciados" y
         "cancelados" (listas de tuplas (actividad, empresa)).
     """
-    columnas = [{"width": 1}, {"width": 1.3}, {"width": 3}]
+    columnas = [{"width": 1}, {"width": 2}, {"width": 5}]
 
     cuerpo = [
         {

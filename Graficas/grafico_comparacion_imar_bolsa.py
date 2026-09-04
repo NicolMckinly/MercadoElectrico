@@ -21,11 +21,17 @@ El eje Y va siempre de 0 a 1300 (o mas, si el Precio de Escasez lo
 supera), para que todas las graficas del informe compartan la misma
 base y escala de referencia visual.
 
-El grafico se guarda como una imagen .png dentro de esta misma carpeta.
+El grafico se guarda como una imagen .png dentro de esta misma carpeta,
+con el mes y el anio en el nombre del archivo (ej.
+comparacion_imar_bolsa_2026_09.png). Antes de guardar la grafica del
+mes vigente, se borran los archivos de meses anteriores con este
+mismo prefijo, para que la carpeta no vaya acumulando imagenes viejas
+mes tras mes.
 """
 
 import sys
 import os
+import glob
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -54,6 +60,24 @@ MESES_EN_ESPANOL = {
     5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
     9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
 }
+
+
+def _eliminar_graficos_de_meses_anteriores(nombre_archivo_actual):
+    """
+    Borra, dentro de esta misma carpeta, cualquier archivo con el
+    patron "comparacion_imar_bolsa_AAAA_MM.png" que NO sea el archivo
+    del mes vigente. Asi la carpeta nunca acumula graficas de meses
+    pasados.
+
+    El patron de busqueda es especifico (con digitos exactos), para
+    no arriesgarse a borrar por accidente algun otro archivo que
+    empiece con un nombre parecido.
+    """
+    patron = os.path.join(CARPETA_ACTUAL, "comparacion_imar_bolsa_[0-9][0-9][0-9][0-9]_[0-9][0-9].png")
+    for ruta_archivo in glob.glob(patron):
+        if os.path.basename(ruta_archivo) != nombre_archivo_actual:
+            os.remove(ruta_archivo)
+            print("Grafico de mes anterior eliminado: " + ruta_archivo)
 
 
 def generar_grafico_comparacion_imar_bolsa():
@@ -163,6 +187,10 @@ def generar_grafico_comparacion_imar_bolsa():
 
     figura.savefig(ruta_completa, dpi=150)
     plt.close(figura)
+
+    # Borramos las graficas de meses anteriores, ahora que ya se
+    # guardo la del mes vigente.
+    _eliminar_graficos_de_meses_anteriores(nombre_archivo)
 
     print("Grafico de comparacion IMAR vs Precio de Bolsa generado: " + ruta_completa)
     return ruta_completa

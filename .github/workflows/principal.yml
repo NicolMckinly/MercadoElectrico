@@ -37,7 +37,7 @@ jobs:
           if es_dia_habil:
               permitido = 8 <= ahora.hour < 17
           else:
-              permitido = 9 <= ahora.hour < 12
+              permitido = 9 <= ahora.hour < 18
           print('true' if permitido else 'false')
           ")
           echo "ejecutar=$RESULTADO" >> "$GITHUB_OUTPUT"
@@ -66,8 +66,7 @@ jobs:
           git config --global user.name "Sistema Automatico"
           git config --global user.email "sistema@mercadoelectrico.local"
           git config --global pull.rebase false
-          git add -f BaseDatos/mercado_electrico.db Graficas/*.png
-          git add -A Reportes/
+          git add -A BaseDatos/mercado_electrico.db Graficas/ Reportes/
           git commit -m "Actualizacion automatica $(date +'%Y-%m-%d %H:%M')" || echo "No hay cambios nuevos para guardar"
           git pull origin master --no-edit -X ours
           git push

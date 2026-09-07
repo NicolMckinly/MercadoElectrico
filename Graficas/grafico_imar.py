@@ -12,9 +12,12 @@ El titulo del grafico incluye la fecha del dia que se esta mostrando
 el servidor donde corre el sistema (GitHub Actions) no tiene
 instalado el idioma espanol.
 
-El eje Y siempre va de 0 a 1200 $/kWh, para que todas las graficas
-del informe compartan la misma base y el mismo techo de referencia
-visual.
+El eje Y siempre parte desde 0 (piso fijo, nunca baja de ahi). El
+limite superior normalmente es 1200 $/kWh, pero si el valor mas alto
+del dia (entre IMAR y PB Proyectado TMM) supera esa cifra, el limite
+sube automaticamente hasta ese valor maximo mas 200 $/kWh de margen,
+para que la linea nunca quede cortada ni pegada al borde superior
+del grafico.
 
 El grafico se guarda como imagen .png dentro de esta misma carpeta.
 """
@@ -30,6 +33,9 @@ CARPETA_ACTUAL = os.path.dirname(os.path.abspath(__file__))
 
 COLOR_IMAR_CRUDO = "#7F9CC4"
 COLOR_PB_PROYECTADO = "#1F4E79"
+
+LIMITE_SUPERIOR_MINIMO = 1200
+MARGEN_SOBRE_EL_MAXIMO = 200
 
 MESES_EN_ESPANOL_LARGO = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
@@ -93,9 +99,14 @@ def generar_grafico_imar_siguiente_dia(tabla_imar):
     ejes.grid(True, linestyle="--", alpha=0.3)
     ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12), ncol=2, frameon=False)
 
-    # El eje Y siempre va de 0 a 1200 $/kWh, para compartir la misma
-    # base y el mismo techo visual con las demas graficas del informe.
-    ejes.set_ylim(0, 1200)
+    # El piso del eje Y siempre queda fijo en 0, sin excepciones. El
+    # techo normalmente es 1200, pero si el valor mas alto del dia lo
+    # supera, el techo sube hasta ese maximo mas un margen de 200,
+    # para que la linea nunca quede cortada ni pegada al borde del
+    # grafico.
+    valor_maximo_del_dia = max(valores_crudo + valores_proyectado)
+    limite_superior = max(LIMITE_SUPERIOR_MINIMO, valor_maximo_del_dia + MARGEN_SOBRE_EL_MAXIMO)
+    ejes.set_ylim(0, limite_superior)
 
     # Mas espacio abajo para que la leyenda no se encime con las
     # etiquetas del eje X.

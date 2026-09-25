@@ -1,61 +1,75 @@
 """
 enviar_teams.py
 
-Arma la Tarjeta Adaptable con el formato de tabla Status/Actividad/
-Nombre y la envía como UN solo mensaje al webhook de Teams. Si Teams
-la rechaza por ser demasiado pesada (error 413 / RequestEntityTooLarge,
-lo cual puede pasar en una semana con muchos registros), el script
-reintenta automáticamente dividiéndola en dos mensajes más livianos
-(uno por sección) en vez de fallar por completo.
+Arma el reporte de limitación de suministro como una Tarjeta Adaptable
+liviana (listas por sección en vez de una tabla con celdas, que pesa
+mucho más en JSON) y la envía al webhook de Teams como UN solo
+mensaje. Si aun así el reporte quedara demasiado pesado (calculado
+ANTES de enviar, no después), se divide automáticamente en dos
+mensajes más livianos en vez de fallar.
 """
 
 import os
+import json
 import requests
 
-COLUMNAS = [{"width": 1}, {"width": 2}, {"width": 5}]
+# Límite conservador (bytes) para decidir si el mensaje único cabe.
+# Teams suele rechazar tarjetas por encima de ~25 KB.
+LIMITE_BYTES_MENSAJE_UNICO = 20000
 
 
-def _fila_tabla(status, actividad, nombre, es_encabezado=False, es_titulo_status=False):
-    """Crea una fila de la tabla Adaptive Card con 3 columnas (letra pequeña)."""
-    peso = "Bolder" if (es_encabezado or es_titulo_status) else "Default"
-    return {
-        "type": "TableRow",
-        "cells": [
-            {
-                "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": status, "wrap": True, "weight": peso, "size": "Small"}],
-            },
-            {
-                "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": actividad, "wrap": True, "weight": peso, "size": "Small"}],
-            },
-            {
-                "type": "TableCell",
-                "items": [{"type": "TextBlock", "text": nombre, "wrap": True, "weight": peso, "size": "Small"}],
-            },
-        ],
-    }
-
-
-def _construir_tabla_seccion(titulo_status, filas):
+def _texto_seccion(filas):
     """
-    Construye las filas de una sección (ÚLTIMOS INICIADOS o ÚLTIMOS
-    CANCELADOS): encabezado Status/Actividad/Nombre + los datos, o
-    "NO HUBO" si la lista viene vacía.
+    Convierte la lista de (actividad, nombre) en un solo bloque de
+    texto tipo lista, mucho más liviano que una tabla con celdas.
     """
-    tabla = [_fila_tabla("Status", "Actividad", "Nombre", es_encabezado=True)]
-
     if not filas:
-        tabla.append(_fila_tabla(titulo_status, "", "NO HUBO", es_titulo_status=True))
-        return tabla
+        return "**NO HUBO**"
+    return "\n\n".join(f"- **{actividad}** — {nombre}" for actividad, nombre in filas)
 
-    primera = True
-    for actividad, nombre in filas:
-        status_mostrado = titulo_status if primera else ""
-        tabla.append(_fila_tabla(status_mostrado, actividad, nombre, es_titulo_status=primera))
-        primera = False
 
-    return tabla
+def _bloques_seccion(titulo_seccion, datos):
+    """Bloques de una sección completa (título + iniciados + cancelados)."""
+    return [
+        {
+            "type": "TextBlock",
+            "text": titulo_seccion,
+            "weight": "Bolder",
+            "size": "Small",
+            "wrap": True,
+            "spacing": "Medium",
+        },
+        {
+            "type": "TextBlock",
+            "text": "ÚLTIMOS INICIADOS",
+            "weight": "Bolder",
+            "size": "Small",
+            "wrap": True,
+            "spacing": "Small",
+        },
+        {
+            "type": "TextBlock",
+            "text": _texto_seccion(datos["iniciados"]),
+            "wrap": True,
+            "size": "Small",
+            "spacing": "Small",
+        },
+        {
+            "type": "TextBlock",
+            "text": "ÚLTIMOS CANCELADOS",
+            "weight": "Bolder",
+            "size": "Small",
+            "wrap": True,
+            "spacing": "Medium",
+        },
+        {
+            "type": "TextBlock",
+            "text": _texto_seccion(datos["cancelados"]),
+            "wrap": True,
+            "size": "Small",
+            "spacing": "Small",
+        },
+    ]
 
 
 def _envolver_en_mensaje(cuerpo):
@@ -77,8 +91,7 @@ def _envolver_en_mensaje(cuerpo):
     }
 
 
-def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
-    """Construye el reporte COMPLETO como un solo mensaje (formato normal)."""
+def _construir_tarjeta_completa(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
     cuerpo = [
         {
             "type": "TextBlock",
@@ -87,60 +100,13 @@ def construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
             "size": "Medium",
             "wrap": True,
         },
-        {
-            "type": "TextBlock",
-            "text": "LIMITACIÓN DE SUMINISTRO CON CORTE A USUARIOS",
-            "weight": "Bolder",
-            "size": "Small",
-            "wrap": True,
-            "spacing": "Small",
-        },
-        {
-            "type": "Table",
-            "columns": COLUMNAS,
-            "rows": _construir_tabla_seccion("ÚLTIMOS INICIADOS", datos_corte_usuarios["iniciados"]),
-            "firstRowAsHeaders": False,
-            "spacing": "Small",
-        },
-        {
-            "type": "Table",
-            "columns": COLUMNAS,
-            "rows": _construir_tabla_seccion("ÚLTIMOS CANCELADOS", datos_corte_usuarios["cancelados"]),
-            "firstRowAsHeaders": False,
-            "spacing": "None",
-        },
-        {
-            "type": "TextBlock",
-            "text": "LIMITACIÓN DE SUMINISTRO EN BOLSA",
-            "weight": "Bolder",
-            "size": "Small",
-            "wrap": True,
-            "spacing": "Medium",
-        },
-        {
-            "type": "Table",
-            "columns": COLUMNAS,
-            "rows": _construir_tabla_seccion("ÚLTIMOS INICIADOS", datos_en_bolsa["iniciados"]),
-            "firstRowAsHeaders": False,
-            "spacing": "Small",
-        },
-        {
-            "type": "Table",
-            "columns": COLUMNAS,
-            "rows": _construir_tabla_seccion("ÚLTIMOS CANCELADOS", datos_en_bolsa["cancelados"]),
-            "firstRowAsHeaders": False,
-            "spacing": "None",
-        },
     ]
+    cuerpo += _bloques_seccion("LIMITACIÓN DE SUMINISTRO CON CORTE A USUARIOS", datos_corte_usuarios)
+    cuerpo += _bloques_seccion("LIMITACIÓN DE SUMINISTRO EN BOLSA", datos_en_bolsa)
     return _envolver_en_mensaje(cuerpo)
 
 
-def construir_tarjetas_divididas(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
-    """
-    Construye el mismo reporte pero como DOS mensajes separados (uno
-    por sección). Se usa solo como respaldo si el mensaje único queda
-    demasiado pesado para Teams.
-    """
+def _construir_tarjetas_divididas(fecha_texto, datos_corte_usuarios, datos_en_bolsa):
     partes = [
         ("LIMITACIÓN DE SUMINISTRO CON CORTE A USUARIOS", datos_corte_usuarios),
         ("LIMITACIÓN DE SUMINISTRO EN BOLSA", datos_en_bolsa),
@@ -155,64 +121,38 @@ def construir_tarjetas_divididas(fecha_texto, datos_corte_usuarios, datos_en_bol
                 "size": "Medium",
                 "wrap": True,
             },
-            {
-                "type": "TextBlock",
-                "text": titulo_seccion,
-                "weight": "Bolder",
-                "size": "Small",
-                "wrap": True,
-                "spacing": "Small",
-            },
-            {
-                "type": "Table",
-                "columns": COLUMNAS,
-                "rows": _construir_tabla_seccion("ÚLTIMOS INICIADOS", datos["iniciados"]),
-                "firstRowAsHeaders": False,
-                "spacing": "Small",
-            },
-            {
-                "type": "Table",
-                "columns": COLUMNAS,
-                "rows": _construir_tabla_seccion("ÚLTIMOS CANCELADOS", datos["cancelados"]),
-                "firstRowAsHeaders": False,
-                "spacing": "None",
-            },
         ]
+        cuerpo += _bloques_seccion(titulo_seccion, datos)
         tarjetas.append(_envolver_en_mensaje(cuerpo))
     return tarjetas
 
 
-def _es_error_de_tamano(error):
-    respuesta = getattr(error, "response", None)
-    return respuesta is not None and respuesta.status_code in (413,)
-
-
-def enviar_a_teams(payload_principal, payloads_respaldo=None, url_webhook=None):
+def enviar_a_teams(fecha_texto, datos_corte_usuarios, datos_en_bolsa, url_webhook=None):
     """
-    Intenta enviar el reporte como UN solo mensaje (payload_principal).
-    Si Teams lo rechaza por ser demasiado pesado (413), y se pasó
-    payloads_respaldo, envía esos en su lugar (varios mensajes más
-    livianos). Si no hay respaldo, o el error no es de tamaño, se
-    lanza el error normalmente.
+    Construye el reporte y lo envía a Teams. Decide ANTES de enviar si
+    cabe en un solo mensaje (según su tamaño real en bytes) o si hay
+    que dividirlo en dos, para no depender de un error que llega
+    demasiado tarde para reaccionar.
     """
     if url_webhook is None:
         url_webhook = os.environ["TEAMS_WEBHOOK_LIMITACION"]
 
-    try:
-        respuesta = requests.post(url_webhook, json=payload_principal, timeout=30)
-        respuesta.raise_for_status()
-        return [respuesta]
-    except requests.exceptions.HTTPError as error:
-        if not _es_error_de_tamano(error) or not payloads_respaldo:
-            raise
+    tarjeta_unica = _construir_tarjeta_completa(fecha_texto, datos_corte_usuarios, datos_en_bolsa)
+    tamano_bytes = len(json.dumps(tarjeta_unica).encode("utf-8"))
 
+    if tamano_bytes <= LIMITE_BYTES_MENSAJE_UNICO:
+        payloads = [tarjeta_unica]
+    else:
         print(
-            "El mensaje único quedó demasiado pesado para Teams (error 413). "
-            "Se reenvía dividido en varios mensajes más livianos..."
+            f"El reporte pesa {tamano_bytes} bytes, por encima del límite seguro "
+            f"({LIMITE_BYTES_MENSAJE_UNICO}). Se envía dividido en dos mensajes."
         )
-        respuestas = []
-        for payload in payloads_respaldo:
-            respuesta = requests.post(url_webhook, json=payload, timeout=30)
-            respuesta.raise_for_status()
-            respuestas.append(respuesta)
-        return respuestas
+        payloads = _construir_tarjetas_divididas(fecha_texto, datos_corte_usuarios, datos_en_bolsa)
+
+    respuestas = []
+    for payload in payloads:
+        respuesta = requests.post(url_webhook, json=payload, timeout=30)
+        respuesta.raise_for_status()
+        respuestas.append(respuesta)
+
+    return respuestas

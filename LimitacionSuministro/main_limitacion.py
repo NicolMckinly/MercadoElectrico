@@ -2,16 +2,15 @@
 main_limitacion.py
 
 Orquesta el proceso completo: descarga los archivos de XM, los
-procesa y envía el reporte a Teams como un solo mensaje. Si el
-mensaje queda demasiado pesado (semana con muchos registros), se
-reenvía automáticamente dividido en dos.
+procesa y envía el reporte a Teams (normalmente como un solo mensaje;
+solo se divide en dos si de verdad no cabe).
 """
 
 import datetime
 
 from descargar_archivos import descargar_archivos
 from procesar_limitacion import procesar_archivo
-from enviar_teams import construir_tarjeta, construir_tarjetas_divididas, enviar_a_teams
+from enviar_teams import enviar_a_teams
 
 MESES_ES = {
     1: "enero", 2: "febrero", 3: "marzo", 4: "abril",
@@ -35,9 +34,7 @@ def main():
     fecha_texto = _fecha_en_espanol(datetime.date.today())
 
     print("3/3 Enviando reporte a Teams...")
-    tarjeta_principal = construir_tarjeta(fecha_texto, datos_corte_usuarios, datos_en_bolsa)
-    tarjetas_respaldo = construir_tarjetas_divididas(fecha_texto, datos_corte_usuarios, datos_en_bolsa)
-    enviar_a_teams(tarjeta_principal, tarjetas_respaldo)
+    enviar_a_teams(fecha_texto, datos_corte_usuarios, datos_en_bolsa)
 
     print("Listo.")
 

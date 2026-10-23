@@ -38,7 +38,7 @@ jobs:
     # entra a esa carpeta" (como hacer doble clic en ella).
     defaults:
       run:
-        working-directory: ReporteGas
+        working-directory: reporte-gas
     steps:
       # Paso 1: traer nuestro código al computador prestado.
       - uses: actions/checkout@v4
@@ -79,5 +79,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: reporte-gas
-          path: ReporteGas/salida/
+           path: reporte-gas/salida/
           if-no-files-found: ignore

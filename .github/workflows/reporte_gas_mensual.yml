@@ -1,26 +1,16 @@
 # =====================================================================
-# EL "DESPERTADOR" DE GITHUB (GitHub Actions)
-# ---------------------------------------------------------------------
-# Este archivo le dice a GitHub CUÁNDO despertar y QUÉ hacer.
-# GitHub lo lee solo porque está en la carpeta .github/workflows/
+# EL "DESPERTADOR" DE GITHUB (GitHub Actions) - Reporte mensual de gas
 # =====================================================================
 
 name: Reporte mensual de gas
 
 on:
-  # 1. Despertador automático.
-  #    "0 22 24-31 * *" significa: a las 22:00 (hora UTC, que son las
-  #    5:00 p.m. en Colombia), los días 24 al 31 de cada mes.
-  #    El programa revisa si ese día es el último día hábil; si no lo es,
-  #    no hace nada. Así cubrimos todos los casos (fines de semana, festivos).
+  # Despertador automático: días 24 al 31 de cada mes, 5:00 p.m. Colombia.
+  # El programa revisa si es el último día hábil; si no, no hace nada.
   schedule:
     - cron: "0 22 24-31 * *"
 
-  # 2. Botón manual: permite ejecutarlo cuando quieras desde la pestaña
-  #    "Actions" de GitHub, con el botón "Run workflow". Útil para probar.
-  #    Al oprimirlo, GitHub te muestra una cajita "Mes a reportar".
-  #    Si la dejas vacía, usa el mes actual. Si escribes 2026-09, hace
-  #    el reporte de septiembre de 2026.
+  # Botón manual "Run workflow", con una cajita para elegir el mes.
   workflow_dispatch:
     inputs:
       mes:
@@ -30,35 +20,22 @@ on:
 
 jobs:
   generar:
-    runs-on: ubuntu-latest          # GitHub nos presta un computador Linux
+    runs-on: ubuntu-latest
     env:
-      TZ: America/Bogota            # para que el computador use la hora de Colombia
-    # Todo el proyecto de gas vive en la carpeta ReporteGas del repositorio
-    # MercadoElectrico. Esta línea le dice a GitHub: "antes de cada comando,
-    # entra a esa carpeta" (como hacer doble clic en ella).
+      TZ: America/Bogota
+    # El proyecto de gas vive en la carpeta reporte-gas del repositorio.
     defaults:
       run:
         working-directory: reporte-gas
     steps:
-      # Paso 1: traer nuestro código al computador prestado.
       - uses: actions/checkout@v4
 
-      # Paso 2: instalar Python.
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # Paso 3: instalar las librerías de requirements.txt.
       - run: pip install -r requirements.txt
 
-      # Paso 4: ejecutar el programa y enviar el correo.
-      #   - Si lo despertó el calendario, solo trabaja el último día hábil.
-      #   - Si lo ejecutaste con el botón, trabaja siempre (para probar).
-      #
-      #   "env" le pasa al programa las claves que están en la caja fuerte
-      #   (Settings > Secrets and variables > Actions). A la IZQUIERDA va el
-      #   nombre que espera el programa; a la DERECHA, el nombre del secreto
-      #   en GitHub. Si tu secreto se llama distinto, cambia SOLO la derecha.
       - name: Generar y enviar reporte
         env:
           GMAIL_USUARIO: ${{ secrets.CORREO_REMITENTE }}
@@ -74,10 +51,8 @@ jobs:
             python generar_reporte.py --enviar
           fi
 
-      # Paso 5: guardar también una copia del reporte en la pestaña
-      #   "Actions" (por si el correo se pierde o quieres verlo después).
       - uses: actions/upload-artifact@v4
         with:
           name: reporte-gas
-           path: reporte-gas/salida/
+          path: reporte-gas/salida/
           if-no-files-found: ignore

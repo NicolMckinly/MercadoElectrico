@@ -13,9 +13,9 @@
 name: Reporte mensual de gas
 
 on:
-  # Despertador automático: días 24 al 31 de cada mes, 5:00 p.m. Colombia.
+  # Despertador automático: días 24 al 31 de cada mes, 10:00 a.m. Colombia.
   schedule:
-    - cron: "0 22 24-31 * *"
+    - cron: "0 15 24-31 * *"
 
   # Botón manual "Run workflow".
   workflow_dispatch:

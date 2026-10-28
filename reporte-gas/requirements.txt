@@ -1,0 +1,7 @@
+# Lista de "herramientas" (librerías) que necesita el programa.
+# Se instalan todas juntas con:  pip install -r requirements.txt
+pandas
+openpyxl
+matplotlib
+holidays
+playwright

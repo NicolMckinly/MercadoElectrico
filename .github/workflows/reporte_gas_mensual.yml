@@ -100,7 +100,7 @@ jobs:
         env:
           GMAIL_USUARIO: ${{ secrets.CORREO_REMITENTE }}
           GMAIL_CLAVE_APP: ${{ secrets.CORREO_CONTRASENA_APP }}
-          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO_GAS }}
           MES_ELEGIDO: ${{ github.event.inputs.mes }}
           DESCARGA_FALLIDA: ${{ steps.descarga.outcome == 'failure' && '1' || '0' }}
         run: |

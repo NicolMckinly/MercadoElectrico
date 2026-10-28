@@ -175,7 +175,13 @@ solo el lado derecho en el YAML (`${{ secrets.NOMBRE }}`).
   (`cdk-overlay-backdrop`) que tapaba la 2.ª cajita, y el menú `nav.navbar`
   del BEC también estorbaba los clics. Arreglo: `fill` sin clic + Enter +
   Escape, se esconde `nav.navbar` con CSS, y se ajustan las fechas al rango
-  que anuncia el aria-label. Falta confirmarlo con la segunda prueba real.
+  que anuncia el aria-label. Segunda prueba real: las fechas quedaron bien
+  (el tablero ahora permite desde 01/01/2025), pero el calendario NO se
+  cerró con Escape y su `cdk-overlay-backdrop` bloqueó el hover sobre
+  "Tabla de resultados". Arreglo: `cerrar_ventanitas()` (clic forzado en el
+  backdrop → Escape → como último recurso quitar `.cdk-overlay-backdrop` y
+  `.cdk-overlay-pane` del DOM), llamado después de cada fecha y antes de
+  abrir el menú de la tabla. Falta confirmarlo con la tercera prueba real.
 - Hallazgo: en sep-2026 Cusiana se revendió a 21,63 USD/MBTU en el
   secundario vs 8,89 en el primario (+143 %).
 

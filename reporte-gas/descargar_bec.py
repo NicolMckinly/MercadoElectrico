@@ -24,9 +24,11 @@
 # invisible (sin pantalla), como si un fantasma usara el mouse.
 # En cada paso toma una FOTO en la carpeta capturas/.
 #
-# Uso:   python descargar_bec.py
+# Uso:   python descargar_bec.py                    (los dos mercados)
+#        python descargar_bec.py --solo secundario  (solo uno)
 # =====================================================================
 
+import argparse
 import json
 import os
 import re
@@ -375,11 +377,20 @@ def descargar_mercado(navegador, ficha):
 
 
 def main():
+    # Opción --solo: para el reporte semanal solo hace falta el secundario.
+    #   python descargar_bec.py                    -> los dos mercados
+    #   python descargar_bec.py --solo secundario  -> solo el secundario
+    lector = argparse.ArgumentParser(description="Robot que descarga datos del BEC")
+    lector.add_argument("--solo", choices=[f["nombre"] for f in MERCADOS],
+                        help="descargar solo este mercado")
+    opciones = lector.parse_args()
+    fichas = [f for f in MERCADOS if not opciones.solo or f["nombre"] == opciones.solo]
+
     print("ROBOT: voy por los datos al BEC...")
     estado = {}
     with sync_playwright() as p:
         navegador = p.chromium.launch()
-        for ficha in MERCADOS:
+        for ficha in fichas:
             salio_bien = descargar_mercado(navegador, ficha)
             estado[ficha["nombre"]] = "ok" if salio_bien else "fallo"
         navegador.close()

@@ -59,7 +59,7 @@ la carpeta **`reporte-gas/`**. El despertador está en la raíz:
 `.github/workflows/reporte_gas_mensual.yml`, con
 `working-directory: reporte-gas`, una cajita `mes` en "Run workflow", y los
 secretos del usuario: `CORREO_REMITENTE` → GMAIL_USUARIO,
-`CORREO_CONTRASENA_APP` → GMAIL_CLAVE_APP, `CORREO_DESTINO` → CORREO_DESTINO.
+`CORREO_CONTRASENA_APP` → GMAIL_CLAVE_APP, `CORREO_DESTINO_GAS` → CORREO_DESTINO.
 Nunca subir archivos a la raíz del repositorio (pisaría el otro sistema).
 
 ## Estado actual del proyecto
@@ -184,6 +184,43 @@ solo el lado derecho en el YAML (`${{ secrets.NOMBRE }}`).
   abrir el menú de la tabla. Falta confirmarlo con la tercera prueba real.
 - Hallazgo: en sep-2026 Cusiana se revendió a 21,63 USD/MBTU en el
   secundario vs 8,89 en el primario (+143 %).
+
+## Reporte SEMANAL del mercado secundario (agregado el 29/10/2026)
+
+- Pedido del usuario: un reporte aparte, solo del secundario, semanal. El
+  reporte mensual NO cambia.
+- `reporte_semanal_secundario.py`: cubre la última semana completa (lunes a
+  domingo; `pd.Period(..., freq="W-SUN")`), o `--semana AAAA-MM-DD`.
+  Truco: pone la semana en la columna "mes" para reutilizar las funciones
+  de `generar_reporte.py` (resumen_mensual, resumen_por_modalidad,
+  grafica_dispersion_puntos, armar_html, etc.). Compara con la semana
+  anterior y con el promedio de las 4 semanas previas; alertas con los
+  mismos umbrales de config. Gráficas: día por día (precio ponderado + franja
+  mín.–máx.), dispersión de la semana, precio y cantidad de las últimas 12
+  semanas. Avisa si los datos del BEC no cubren toda la semana (el BEC
+  publica con ~1 día de retraso). Puntos: Cusiana y Floreña (el GNL no está
+  en el secundario).
+- `descargar_bec.py --solo secundario` descarga solo ese tablero.
+- Despertador: `.github/workflows/reporte_gas_semanal.yml`, cron
+  `0 15 * * 1` (lunes 10 a. m. Colombia), botón manual con `semana` y
+  `solo_descargar`. Commit de `datos/secundario.xlsx`.
+- Destinatarios: los dos reportes usan el secreto `CORREO_DESTINO_GAS`
+  (solo para el proyecto de gas; `CORREO_DESTINO` es de los otros proyectos).
+- `armar_html` acepta `fuente=` para cambiar la letra pequeña del final.
+
+## Punto Mamonal (agregado el 29/10/2026)
+
+- `"Mamonal": ["mamonal"]`, color `#0F766E`. Solo existe en el SECUNDARIO
+  (punto `MAMONAL`, el de mayor volumen); en el primario no hay ningún
+  punto con ese nombre.
+- Para que un punto que no existe en un mercado no ensucie el reporte, el
+  primario ahora también usa `avisar=False, solo_con_datos=True`. El aviso
+  de "no encontrado" sale solo si un punto no aparece en NINGÚN mercado.
+- `comparar_mercados` y `grafica_primario_vs_secundario` recorren los puntos
+  de los dos mercados; Mamonal sale como "solo se negocia en el secundario".
+- Observación (sin confirmar): el precio de reventa en Mamonal sigue de cerca
+  al del GNL importado del primario (ago-2026: 23,69 vs 24,97), lo que
+  sugiere que allí se revende gas importado. Pendiente confirmar con el BEC.
 
 ## Pendientes (en orden sugerido)
 

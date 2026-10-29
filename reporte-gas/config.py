@@ -57,6 +57,9 @@ PUNTOS_SEGUIMIENTO = {
     # OJO: NO usamos la palabra "cartagena", porque el punto "CARTAGENA" del
     # BEC es otro (existe desde 2015 y mezcla gas que no es solo importado).
     "Cartagena (GNL importado)": ["spec", "fsru"],
+    # Mamonal (zona industrial de Cartagena). Solo existe en el mercado
+    # SECUNDARIO; en el primario no hay ningún punto con ese nombre.
+    "Mamonal": ["mamonal"],
 }
 
 # Color de cada punto en las gráficas comparativas.
@@ -64,6 +67,7 @@ COLORES_PUNTO = {
     "Cusiana": "#1F3A68",
     "Floreña": "#C2410C",
     "Cartagena (GNL importado)": "#7C3AED",
+    "Mamonal": "#0F766E",
     "Nacional": "#374151",
 }
 

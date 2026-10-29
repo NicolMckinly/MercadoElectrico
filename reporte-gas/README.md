@@ -12,6 +12,7 @@ con seguimiento a los puntos de entrega **Cusiana, Floreña y Cartagena (GNL imp
 | `generar_reporte.py` | El programa principal (la "receta"). |
 | `calendario.py` | Calcula el último día hábil del mes (con festivos de Colombia). |
 | `.github/workflows/reporte_mensual.yml` | El "despertador" de GitHub Actions. |
+| `reporte_semanal_secundario.py` | Reporte SEMANAL del mercado secundario (cada lunes). |
 | `descargar_bec.py` | El robot que descarga los datos del BEC solo. |
 | `enviar_correo.py` | El cartero: envía el reporte por Gmail. |
 | `config.py` | El panel de control: rutas, puntos de la Orinoquía, alertas, colores. |
@@ -33,6 +34,8 @@ con seguimiento a los puntos de entrega **Cusiana, Floreña y Cartagena (GNL imp
    - `python generar_reporte.py --solo-ultimo-dia-habil` → solo trabaja si hoy es el último día hábil.
    - `python generar_reporte.py --enviar` → además lo envía por Gmail (necesita las claves).
    - `python generar_reporte.py --prueba --mes 2026-09` → reporte con datos inventados (para probar).
+   - `python reporte_semanal_secundario.py` → reporte semanal del secundario (semana pasada).
+   - `python reporte_semanal_secundario.py --semana 2026-10-21` → la semana que contiene ese día.
    - `python calendario.py` → muestra los últimos días hábiles del año.
 6. Abre el archivo que aparece en `salida/` con tu navegador.
 

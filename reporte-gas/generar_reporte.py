@@ -184,12 +184,13 @@ def leer_excel_secundario(ruta):
     tabla.loc[sin_punto, "punto"] = "Centro poblado: " + tabla.loc[sin_punto, "centro"].astype(str)
 
     # Del día sacamos el mes: 2026-10-15 -> 2026-10.
-    tabla["mes"] = pd.to_datetime(tabla["fecha"], dayfirst=True).dt.to_period("M")
+    tabla["fecha"] = pd.to_datetime(tabla["fecha"], dayfirst=True)
+    tabla["mes"] = tabla["fecha"].dt.to_period("M")
     for col in ["cantidad", "negociaciones", "intermediacion"]:
         tabla[col] = pd.to_numeric(tabla[col], errors="coerce")
     for col in ["precio", "precio_min", "precio_max"]:
         tabla[col] = pd.to_numeric(tabla[col].astype(str).str.replace(",", "."), errors="coerce")
-    return tabla[["mes", "punto", "modalidad", "cantidad", "precio", "precio_min",
+    return tabla[["fecha", "mes", "punto", "modalidad", "cantidad", "precio", "precio_min",
                   "precio_max", "intermediacion", "negociaciones"]]
 
 
@@ -470,11 +471,12 @@ def grafica_primario_vs_secundario(gp, gs, meses):
     Si la punteada va por encima, el gas se está revendiendo más caro.
     """
     fig, ax = plt.subplots(figsize=(10, 3.8))
-    for nombre in gp:
+    for nombre in list(gp) + [n for n in gs if n not in gp]:
         color = color_punto(nombre)
-        prim = resumen_mensual(gp[nombre])["precio"].reindex(meses)
-        ax.plot(range(len(meses)), prim.values, color=color, linewidth=2, marker="o",
-                markersize=4, label=f"{nombre} · primario")
+        if nombre in gp:
+            prim = resumen_mensual(gp[nombre])["precio"].reindex(meses)
+            ax.plot(range(len(meses)), prim.values, color=color, linewidth=2, marker="o",
+                    markersize=4, label=f"{nombre} · primario")
         if nombre in gs:
             sec = resumen_mensual(gs[nombre])["precio"].reindex(meses)
             ax.plot(range(len(meses)), sec.values, color=color, linewidth=2, linestyle="--",
@@ -664,7 +666,22 @@ def comparar_mercados(gp, gs, encontrados_s, mes):
     ¿el gas se está revendiendo más caro o más barato que en la primera venta?
     """
     frases, alertas, filas = [], [], ""
-    for nombre, tabla_p in gp.items():
+    nombres = list(gp) + [n for n in gs if n not in gp]     # los de los dos mercados
+    for nombre in nombres:
+        if nombre not in gp:
+            # Este punto solo existe en el secundario (por ejemplo, Mamonal).
+            ms = resumen_mensual(gs[nombre])
+            s_ = ms.loc[mes] if mes in ms.index else None
+            precio_s = s_["precio"] if s_ is not None else float("nan")
+            frases.append(f"{nombre}: solo se negocia en el secundario"
+                          + (f"; este mes se revendió a {fmt_precio(precio_s)} USD/MBTU."
+                             if s_ is not None else "; este mes no tuvo negocios."))
+            filas += (f"<tr><td style='{CELDA}'>{nombre}</td>"
+                      f"<td style='{CELDA};text-align:right;color:#6B7280'>no existe</td>"
+                      f"<td style='{CELDA};text-align:right'>{fmt_precio(precio_s)}</td>"
+                      f"<td style='{CELDA};text-align:right'>{flecha(None)}</td></tr>")
+            continue
+        tabla_p = gp[nombre]
         mp = resumen_mensual(tabla_p)
         p = mp.loc[mes] if mes in mp.index else None
         if nombre not in gs:
@@ -848,7 +865,14 @@ def pie_html(mercados, archivos):
     return "".join(partes)
 
 
-def armar_html(*, titulo, subtitulo, avisos, alertas, cuerpo, pie, prueba):
+FUENTE_MENSUAL = ("Fuente: Gestor del Mercado de Gas Natural (BMC), información transaccional "
+                  "publicada en el BEC (mercados primario y secundario). Precio calculado como "
+                  "promedio ponderado por cantidad; puede diferir levemente del publicado por el "
+                  "BEC. ND = precio no disponible. Los contratos registrados después de la fecha "
+                  "de corte aparecerán en el reporte del mes siguiente.")
+
+
+def armar_html(*, titulo, subtitulo, avisos, alertas, cuerpo, pie, prueba, fuente=FUENTE_MENSUAL):
     """Junta todas las piezas en una página HTML."""
     partes = []
     if prueba:
@@ -879,12 +903,7 @@ def armar_html(*, titulo, subtitulo, avisos, alertas, cuerpo, pie, prueba):
   {cuerpo}
   <div style="margin:36px 0 0;color:#6B7280;font-size:12px;line-height:1.5">
   {pie}
-  <p style="margin:10px 0 0">Fuente: Gestor del Mercado de Gas Natural (BMC), información
-  transaccional publicada en el BEC (mercados primario y secundario). Precio calculado como
-  promedio ponderado por cantidad; puede diferir levemente del publicado por el BEC.
-  ND = precio no disponible. Los contratos registrados después de la fecha de corte
-  aparecerán en el reporte del mes siguiente.
-  Generado automáticamente el {date.today():%d/%m/%Y}.</p></div>
+  <p style="margin:10px 0 0">{fuente} Generado automáticamente el {date.today():%d/%m/%Y}.</p></div>
 </div></body></html>"""
 
 
@@ -993,7 +1012,10 @@ def main():
 
     print("PASO 2 y 3: calculando y dibujando...")
     mercados = []
-    prim = procesar_mercado("Mercado primario", "p_", tabla_p, mes, meses_graf)
+    # avisar=False y solo_con_datos=True: un punto que no existe en un mercado
+    # (como Mamonal en el primario) simplemente no sale en esa sección.
+    prim = procesar_mercado("Mercado primario", "p_", tabla_p, mes, meses_graf,
+                            avisar=False, solo_con_datos=True)
     prim["nota"] = "Primera venta del gas: productores e importadores venden a comercializadores, distribuidoras, térmicas e industrias."
     if prim["aviso"]:
         avisos.append(prim["aviso"])
@@ -1018,6 +1040,14 @@ def main():
     else:
         print("   (no hay archivo del mercado secundario: el reporte sale solo con el primario)")
 
+    # ¿Hay algún punto que no aparezca en NINGÚN mercado? Eso sí merece aviso
+    # (probablemente la palabra clave de config.py está mal escrita).
+    for nombre in config.PUNTOS_SEGUIMIENTO:
+        en_alguno = any(m["encontrados"].get(nombre) for m in mercados)
+        if not en_alguno and not ("Nacional" in prim["grupos"]):
+            avisos.append(f"No encontré el punto «{nombre}» en ningún mercado. Revisa sus "
+                          f"palabras clave en config.py comparándolas con la lista del final.")
+
     def cuerpo(src):
         """El contenido del reporte; src dice dónde está cada imagen."""
         partes = []
@@ -1041,7 +1071,7 @@ def main():
     piezas = dict(
         titulo=f"Contratos de gas natural: {titulo_mes}",
         subtitulo=(f"Reporte mensual · {mercados_txt} · "
-                   f"{' · '.join(prim['grupos'].keys())} · corte al {hoy:%d/%m/%Y}"),
+                   f"{' · '.join(config.PUNTOS_SEGUIMIENTO)} · corte al {hoy:%d/%m/%Y}"),
         avisos=avisos, alertas=alertas, pie=pie_html(mercados, leidos),
         prueba=opciones.prueba)
 

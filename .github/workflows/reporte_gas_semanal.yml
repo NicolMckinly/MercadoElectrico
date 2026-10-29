@@ -1,0 +1,99 @@
+# =====================================================================
+# DESPERTADOR DEL REPORTE SEMANAL (solo mercado secundario)
+# ---------------------------------------------------------------------
+# Cada lunes a las 10:00 a. m. (hora Colombia):
+#   1. El robot descarga SOLO el tablero del mercado secundario.
+#   2. Guarda el archivo nuevo en GitHub.
+#   3. Arma el reporte de la semana anterior (lunes a domingo) y lo envía.
+# El reporte mensual tiene su propio despertador y no cambia.
+# =====================================================================
+
+name: Reporte semanal mercado secundario
+
+on:
+  # Cada lunes a las 15:00 hora universal = 10:00 a. m. en Colombia.
+  #   "0 15 * * 1" = minuto 0, hora 15, cualquier día, cualquier mes, lunes (1).
+  schedule:
+    - cron: "0 15 * * 1"
+
+  # Botón manual "Run workflow".
+  workflow_dispatch:
+    inputs:
+      semana:
+        description: "Un día de la semana a reportar (AAAA-MM-DD). Vacío = semana pasada"
+        required: false
+        default: ""
+      solo_descargar:
+        description: "Solo probar el robot (descarga datos, no envía correo)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  semanal:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Bogota
+    defaults:
+      run:
+        working-directory: reporte-gas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Instalar navegador para el robot
+        run: python -m playwright install --with-deps chromium
+
+      - name: Robot descarga el mercado secundario
+        id: descarga
+        continue-on-error: true
+        run: python descargar_bec.py --solo secundario
+
+      - name: Guardar datos nuevos en el repositorio
+        run: |
+          git config user.name "robot-reporte-gas"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add datos/secundario.xlsx
+          if git diff --cached --quiet; then
+            echo "Los datos no cambiaron desde la última vez."
+          else
+            git commit -m "Datos BEC secundario actualizados $(date +%Y-%m-%d)"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Generar y enviar reporte semanal
+        if: inputs.solo_descargar != true
+        env:
+          GMAIL_USUARIO: ${{ secrets.CORREO_REMITENTE }}
+          GMAIL_CLAVE_APP: ${{ secrets.CORREO_CONTRASENA_APP }}
+          CORREO_DESTINO: ${{ secrets.CORREO_DESTINO_GAS }}
+          SEMANA_ELEGIDA: ${{ github.event.inputs.semana }}
+          DESCARGA_FALLIDA: ${{ steps.descarga.outcome == 'failure' && '1' || '0' }}
+        run: |
+          if [ -n "$SEMANA_ELEGIDA" ]; then
+            python reporte_semanal_secundario.py --semana "$SEMANA_ELEGIDA" --enviar
+          else
+            python reporte_semanal_secundario.py --enviar
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fotos-del-robot-semanal
+          path: reporte-gas/capturas/
+          if-no-files-found: ignore
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-semanal
+          path: reporte-gas/salida/
+          if-no-files-found: ignore

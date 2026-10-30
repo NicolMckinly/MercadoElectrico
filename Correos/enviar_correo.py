@@ -11,6 +11,9 @@ pasa nada (ruta_archivo_pdf=None), se envia solo el texto, sin
 adjunto (como la alerta de convocatorias nuevas de Ecopetrol, que
 es solo una notificacion rapida).
 
+Tambien se puede pasar una lista de archivos adicionales para adjuntar
+(parametro archivos_adicionales), por ejemplo varias imagenes .png.
+
 Se puede indicar opcionalmente una lista de destinatarios
 adicionales (parametro destinatarios_extra), que se agregan junto
 al correo principal (CORREO_DESTINO del .env).
@@ -35,7 +38,8 @@ SERVIDOR_SMTP_GMAIL = "smtp.gmail.com"
 PUERTO_SMTP_GMAIL = 465
 
 
-def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinatarios_extra=None):
+def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinatarios_extra=None,
+                              archivos_adicionales=None):
     """
     Envia un correo electronico, con o sin archivo PDF adjunto.
 
@@ -48,6 +52,8 @@ def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinat
         destinatarios_extra (list de str, opcional): correos adicionales
             que tambien deben recibir este envio especifico, ademas
             del CORREO_DESTINO principal configurado en el .env.
+        archivos_adicionales (list de str, opcional): otras rutas de
+            archivos a adjuntar (por ejemplo imagenes .png).
 
     Retorna:
         True si el correo se envio correctamente, False si hubo un error.
@@ -76,12 +82,24 @@ def enviar_informe_por_correo(ruta_archivo_pdf, asunto, cuerpo_mensaje, destinat
     mensaje["Subject"] = asunto
     mensaje.attach(MIMEText(cuerpo_mensaje, "plain"))
 
+    rutas_a_adjuntar = []
     if ruta_archivo_pdf is not None:
-        with open(ruta_archivo_pdf, "rb") as archivo:
-            adjunto = MIMEBase("application", "octet-stream")
+        rutas_a_adjuntar.append(ruta_archivo_pdf)
+    for ruta_adicional in (archivos_adicionales or []):
+        if not os.path.exists(ruta_adicional):
+            print("Error: no se encontro el archivo a adjuntar: " + ruta_adicional)
+            return False
+        rutas_a_adjuntar.append(ruta_adicional)
+
+    for ruta_adjunto in rutas_a_adjuntar:
+        with open(ruta_adjunto, "rb") as archivo:
+            if ruta_adjunto.lower().endswith(".png"):
+                adjunto = MIMEBase("image", "png")
+            else:
+                adjunto = MIMEBase("application", "octet-stream")
             adjunto.set_payload(archivo.read())
         encoders.encode_base64(adjunto)
-        nombre_archivo = os.path.basename(ruta_archivo_pdf)
+        nombre_archivo = os.path.basename(ruta_adjunto)
         adjunto.add_header("Content-Disposition", "attachment; filename=" + nombre_archivo)
         mensaje.attach(adjunto)
 

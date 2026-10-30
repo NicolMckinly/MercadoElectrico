@@ -1,0 +1,64 @@
+# =====================================================================
+# GRAFICOS A PEDIDO - Precio de Bolsa
+# ---------------------------------------------------------------------
+# No corre solo. Se usa desde GitHub:
+#   Actions -> "Graficos a pedido - Precio de Bolsa" -> Run workflow
+# y se escriben los meses que se quieren, por ejemplo:
+#   2026-09
+#   2026-07 a 2026-09
+#   2026-07, 2026-09, 2025-09
+# Llega un correo con una imagen por mes (y una comparativa si son
+# varios meses). Las imagenes tambien quedan descargables en la pestana
+# Actions (seccion "Artifacts" de la ejecucion).
+# =====================================================================
+
+name: Graficos a pedido - Precio de Bolsa
+
+on:
+  workflow_dispatch:
+    inputs:
+      meses:
+        description: "Meses (AAAA-MM). Ej: 2026-09  |  2026-07 a 2026-09  |  2026-07, 2025-09"
+        required: true
+        default: ""
+      correo_extra:
+        description: "Correo adicional que tambien lo recibe (opcional)"
+        required: false
+        default: ""
+
+jobs:
+  graficos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          pip install pandas==2.2.3 matplotlib python-dotenv
+
+      - name: Crear archivo de credenciales
+        run: |
+          echo "CORREO_DESTINO=${{ secrets.CORREO_DESTINO }}" >> .env
+          echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
+          echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
+          echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
+
+      - name: Generar y enviar graficos
+        env:
+          MESES: ${{ github.event.inputs.meses }}
+          CORREO_EXTRA: ${{ github.event.inputs.correo_extra }}
+        run: python main_graficos_a_pedido.py "$MESES" --correo "$CORREO_EXTRA"
+
+      - name: Dejar las imagenes descargables
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graficos-precio-bolsa
+          path: GraficosAPedido/*.png
+          if-no-files-found: ignore

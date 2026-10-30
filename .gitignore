@@ -17,3 +17,6 @@ Logs/*.log
 # Archivos temporales del sistema
 .DS_Store
 Thumbs.db
+
+# Graficos a pedido (se regeneran cada vez que se piden)
+GraficosAPedido/

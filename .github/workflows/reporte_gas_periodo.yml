@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------
 # No tiene despertador automático: solo funciona cuando lo pides con el
 # botón "Run workflow". Escribes desde qué mes y hasta qué mes, eliges a
-# quién se envía, y en unos minutos llega por correo.
+# quién se envía ("Solo a mí" por defecto), y en unos minutos llega por correo.
 # No cambia nada de los reportes mensual y semanal.
 # =====================================================================
 
@@ -22,9 +22,10 @@ on:
         description: "¿A quién se envía?"
         type: choice
         options:
+          - "Solo a mí"
           - "Grupo del reporte mensual"
           - "Grupo del reporte semanal"
-        default: "Grupo del reporte mensual"
+        default: "Solo a mí"
 
 permissions:
   contents: write
@@ -71,7 +72,8 @@ jobs:
         env:
           GMAIL_USUARIO: ${{ secrets.CORREO_REMITENTE }}
           GMAIL_CLAVE_APP: ${{ secrets.CORREO_CONTRASENA_APP }}
-          CORREO_DESTINO: ${{ inputs.destinatarios == 'Grupo del reporte semanal' && secrets.CORREO_DESTINO_SEMANAL || secrets.CORREO_DESTINO_GAS }}
+          # "Solo a mí" usa el secreto CORREO_PERSONAL; los grupos, los de siempre.
+          CORREO_DESTINO: ${{ inputs.destinatarios == 'Grupo del reporte semanal' && secrets.CORREO_DESTINO_SEMANAL || inputs.destinatarios == 'Grupo del reporte mensual' && secrets.CORREO_DESTINO_GAS || secrets.CORREO_PERSONAL }}
           DESDE: ${{ inputs.desde }}
           HASTA: ${{ inputs.hasta }}
         run: python reporte_periodo.py --desde "$DESDE" --hasta "$HASTA" --enviar

@@ -16,9 +16,13 @@ borra ningun otro grafico, y su nombre de salida
 (precio_bolsa_mes_AAAA_MM.png) no coincide con el patron que limpia
 grafico_mensual.py.
 
-Tambien incluye generar_grafico_comparativo(), que pone varios meses
-lado a lado (lineas superpuestas por dia del mes, y barras con el
-promedio de cada mes frente a su Precio de Escasez).
+Tambien incluye:
+  - generar_grafico_periodo(): varios meses SEGUIDOS en una sola linea
+    de tiempo, con el mismo estilo (TX1 + IMAR + Precio de Escasez de
+    cada mes, valor en cada punto, leyenda abajo).
+  - generar_grafico_comparativo(): para meses NO seguidos (ej.
+    septiembre 2025 y septiembre 2026), lineas superpuestas por dia
+    del mes y barras con el promedio de cada mes.
 
 Para pedir graficos de cualquier mes o meses y recibirlos por correo,
 usar main_graficos_a_pedido.py (raiz del proyecto).
@@ -281,6 +285,145 @@ def generar_grafico_comparativo(meses, carpeta_salida=None):
     plt.close(figura)
 
     print("Grafico comparativo generado: " + ruta)
+    return ruta
+
+
+def _meses_son_seguidos(meses):
+    """True si la lista (ordenada) de (anio, mes) no tiene huecos."""
+    for (a1, m1), (a2, m2) in zip(meses, meses[1:]):
+        siguiente = (a1, m1 + 1) if m1 < 12 else (a1 + 1, 1)
+        if (a2, m2) != siguiente:
+            return False
+    return True
+
+
+def generar_grafico_periodo(meses, carpeta_salida=None):
+    """
+    Grafica varios meses SEGUIDOS como una sola linea de tiempo, con
+    el mismo estilo del grafico mensual: Precio de Bolsa real (TX1),
+    IMAR para los dias que aun no tienen precio real, valor en cada
+    punto, Precio de Escasez de cada mes (escalonado) y leyenda abajo.
+
+    Parametros:
+        meses: lista ordenada de tuplas (anio, mes), sin huecos.
+
+    Retorna:
+        La ruta de la imagen generada, o None si no hay datos.
+    """
+    inicio = _rango_del_mes(*meses[0])[0]
+    fin = _rango_del_mes(*meses[-1])[1]
+    serie = obtener_serie_combinada(fecha_inicio=inicio, fecha_fin=fin)
+    if len(serie) == 0:
+        print("No hay datos para el periodo pedido.")
+        return None
+
+    serie["promedio_diario"] = serie[COLUMNAS_HORA].mean(axis=1)
+    serie["fecha_dt"] = pd.to_datetime(serie["fecha"])
+    serie = serie.sort_values("fecha_dt")
+
+    total_dias = (pd.Timestamp(fin) - pd.Timestamp(inicio)).days + 1
+    poner_etiquetas = total_dias <= 124  # hasta 4 meses se leen bien
+    ancho = min(max(11, total_dias * 0.3), 40)
+
+    figura, ejes = plt.subplots(figsize=(ancho, 5.8))
+
+    ejes.plot(serie["fecha_dt"], serie["promedio_diario"], color="#CCCCCC", linewidth=1, zorder=1)
+
+    dias_real = serie[serie["fuente"] == "Precio Bolsa"]
+    dias_imar = serie[serie["fuente"] == "IMAR"]
+    tamano_punto = 5 if total_dias <= 62 else 3.5
+
+    ejes.plot(
+        dias_real["fecha_dt"], dias_real["promedio_diario"], "o-",
+        color=COLOR_PRECIO_REAL, linewidth=2.3, markersize=tamano_punto,
+        label="Precio de Bolsa (real)", zorder=2
+    )
+    if len(dias_imar) > 0:
+        ejes.plot(
+            dias_imar["fecha_dt"], dias_imar["promedio_diario"], "o--",
+            color=COLOR_IMAR, linewidth=2.3, markersize=tamano_punto,
+            label="IMAR", zorder=2
+        )
+
+    if poner_etiquetas:
+        for _, fila in serie.iterrows():
+            color = COLOR_PRECIO_REAL if fila["fuente"] == "Precio Bolsa" else COLOR_IMAR
+            ejes.annotate(
+                "{:.0f}".format(fila["promedio_diario"]),
+                xy=(fila["fecha_dt"], fila["promedio_diario"]),
+                xytext=(0, 9), textcoords="offset points",
+                ha="center", fontsize=7.5, color=color, fontweight="bold"
+            )
+
+    # Precio de Escasez de cada mes, como escalones
+    escasez = consultar_todo_precio_escasez()
+    valores_escasez = []
+    primera_linea = True
+    for anio, mes in meses:
+        inicio_mes, fin_mes = _rango_del_mes(anio, mes)
+        escasez_mes = escasez[(escasez["fecha"] >= inicio_mes) & (escasez["fecha"] <= fin_mes)]
+        if len(escasez_mes) == 0:
+            continue
+        valor = escasez_mes["valor"].iloc[-1]
+        valores_escasez.append(valor)
+        desde = pd.Timestamp(inicio_mes) - pd.Timedelta(hours=12)
+        hasta = pd.Timestamp(fin_mes) + pd.Timedelta(hours=12)
+        ejes.hlines(
+            valor, desde, hasta, colors=COLOR_ESCASEZ, linestyles=":", linewidth=2,
+            label="Precio de Escasez" if primera_linea else None
+        )
+        primera_linea = False
+        ejes.annotate(
+            "{:.0f}".format(valor), xy=(pd.Timestamp(inicio_mes), valor),
+            xytext=(0, 6), textcoords="offset points",
+            ha="left", fontsize=9, color=COLOR_ESCASEZ, fontweight="bold"
+        )
+
+    limite_superior = max([LIMITE_SUPERIOR_MINIMO, serie["promedio_diario"].max() * 1.12]
+                          + [v * 1.08 for v in valores_escasez])
+    ejes.set_ylim(0, limite_superior)
+
+    # Separador y nombre de cada mes
+    for anio, mes in meses:
+        inicio_mes, fin_mes = _rango_del_mes(anio, mes)
+        if (anio, mes) != meses[0]:
+            ejes.axvline(pd.Timestamp(inicio_mes) - pd.Timedelta(hours=12),
+                         color="#888888", linewidth=1, linestyle="-", alpha=0.6)
+        centro = pd.Timestamp(inicio_mes) + (pd.Timestamp(fin_mes) - pd.Timestamp(inicio_mes)) / 2
+        nombre = MESES_EN_ESPANOL[mes] + (" (en curso)" if _es_mes_en_curso(anio, mes) else "")
+        ejes.text(centro, 0.02, nombre, transform=ejes.get_xaxis_transform(),
+                  ha="center", va="bottom", fontsize=9, color="#666666", fontweight="bold")
+
+    primero, ultimo = meses[0], meses[-1]
+    if primero[0] == ultimo[0]:
+        periodo = MESES_EN_ESPANOL[primero[1]] + " a " + MESES_EN_ESPANOL[ultimo[1]] + " " + str(ultimo[0])
+    else:
+        periodo = (MESES_EN_ESPANOL[primero[1]] + " " + str(primero[0]) + " a "
+                   + MESES_EN_ESPANOL[ultimo[1]] + " " + str(ultimo[0]))
+    ejes.set_title("Precio de Bolsa Nacional - " + periodo, fontsize=14, fontweight="bold")
+    ejes.set_ylabel("Precio promedio diario ($/kWh)")
+    ejes.set_xlabel("Dia del mes")
+
+    ejes.set_xlim(pd.Timestamp(inicio) - pd.Timedelta(hours=18), pd.Timestamp(fin) + pd.Timedelta(hours=18))
+    if total_dias <= 62:
+        ejes.xaxis.set_major_locator(mdates.DayLocator())
+    elif total_dias <= 124:
+        ejes.xaxis.set_major_locator(mdates.DayLocator(bymonthday=range(1, 32, 2)))
+    else:
+        ejes.xaxis.set_major_locator(mdates.DayLocator(bymonthday=[1, 8, 15, 22]))
+    ejes.xaxis.set_major_formatter(mdates.DateFormatter("%d"))
+    ejes.tick_params(axis="x", labelsize=8 if total_dias > 31 else 10)
+
+    ejes.grid(True, linestyle="--", alpha=0.4)
+    ejes.legend(loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3, frameon=False)
+    figura.tight_layout()
+
+    nombre_archivo = "precio_bolsa_periodo_%04d_%02d_a_%04d_%02d.png" % (primero + ultimo)
+    ruta = os.path.join(carpeta_salida or CARPETA_ACTUAL, nombre_archivo)
+    figura.savefig(ruta, dpi=150)
+    plt.close(figura)
+
+    print("Grafico del periodo generado: " + ruta)
     return ruta
 
 

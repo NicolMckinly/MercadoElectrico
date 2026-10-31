@@ -15,7 +15,9 @@ Como indicar los meses (formato AAAA-MM):
 
 Que llega en el correo (imagenes adjuntas):
     - Una imagen por mes (TX1 + IMAR + Precio de Escasez).
-    - Si se piden 2 o mas meses, ademas una imagen comparativa.
+    - Si se piden 2 o mas meses SEGUIDOS, ademas una imagen con todo el
+      periodo en una sola linea de tiempo (mismo estilo).
+    - Si son meses sueltos (ej. 2025-09 y 2026-09), una comparativa.
 
 Uso desde la terminal:
     python main_graficos_a_pedido.py "2026-09"
@@ -38,7 +40,8 @@ sys.path.append(os.path.join(CARPETA_PROYECTO, "Graficas"))
 sys.path.append(os.path.join(CARPETA_PROYECTO, "Correos"))
 
 from grafico_mes_especifico import (
-    generar_grafico_mes, generar_grafico_comparativo, MESES_EN_ESPANOL
+    generar_grafico_mes, generar_grafico_comparativo, generar_grafico_periodo,
+    _meses_son_seguidos, MESES_EN_ESPANOL
 )
 from zona_horaria import ahora_colombia
 
@@ -140,10 +143,15 @@ def generar_y_enviar(texto_meses, enviar=True, correo_extra=None):
         print("Ninguno de los meses pedidos tiene datos en la base. No se envia nada.")
         return None
 
+    # Si son varios meses: seguidos -> una sola linea de tiempo;
+    # no seguidos (ej. sep 2025 y sep 2026) -> comparativo superpuesto.
     if len(meses_con_datos) > 1:
-        ruta_comparativo = generar_grafico_comparativo(meses_con_datos, carpeta_salida=CARPETA_SALIDA)
-        if ruta_comparativo is not None:
-            imagenes.insert(0, ruta_comparativo)
+        if _meses_son_seguidos(meses_con_datos):
+            ruta_conjunta = generar_grafico_periodo(meses_con_datos, carpeta_salida=CARPETA_SALIDA)
+        else:
+            ruta_conjunta = generar_grafico_comparativo(meses_con_datos, carpeta_salida=CARPETA_SALIDA)
+        if ruta_conjunta is not None:
+            imagenes.insert(0, ruta_conjunta)
 
     if not enviar:
         return imagenes
@@ -154,7 +162,10 @@ def generar_y_enviar(texto_meses, enviar=True, correo_extra=None):
         "Meses incluidos: " + ", ".join(_nombre_mes(m) for m in meses_con_datos) + ".",
     ]
     if len(meses_con_datos) > 1:
-        cuerpo.append("Se adjunta tambien una imagen que compara los meses.")
+        if _meses_son_seguidos(meses_con_datos):
+            cuerpo.append("La primera imagen muestra todo el periodo seguido; luego viene cada mes por separado.")
+        else:
+            cuerpo.append("La primera imagen compara los meses; luego viene cada mes por separado.")
     if meses_sin_datos:
         cuerpo.append("")
         cuerpo.append("Sin datos en el sistema (no incluidos): "

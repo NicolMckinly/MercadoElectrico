@@ -73,6 +73,74 @@ def _es_mes_en_curso(anio, mes):
     return (anio, mes) == (hoy.year, hoy.month)
 
 
+def _dibujar_etiquetas(ejes, figura, serie, tamano_letra):
+    """
+    Escribe el valor de cada punto evitando que los numeros se monten:
+      - En los picos (o puntos mas altos que sus vecinos) el numero va
+        ARRIBA de la linea; en los valles (o puntos mas bajos) va ABAJO.
+      - Si dos puntos seguidos quedan del mismo lado, a casi la misma
+        altura y tan juntos que los numeros se tocarian, el segundo
+        numero se corre un poco mas lejos para que no choque.
+    Se debe llamar despues de fijar los limites del eje Y.
+    """
+    valores = list(serie["promedio_diario"])
+    fechas = list(serie["fecha_dt"])
+    colores = [COLOR_PRECIO_REAL if f == "Precio Bolsa" else COLOR_IMAR for f in serie["fuente"]]
+    n = len(valores)
+    if n == 0:
+        return
+
+    # Cuantas unidades de precio equivalen a 1 punto tipografico de alto,
+    # y cuantos puntos tipograficos hay entre un dia y el siguiente
+    alto_ejes_pt = ejes.get_position().height * figura.get_figheight() * 72
+    y_min, y_max = ejes.get_ylim()
+    unidades_por_pt = (y_max - y_min) / alto_ejes_pt
+
+    ancho_ejes_pt = ejes.get_position().width * figura.get_figwidth() * 72
+    x_min, x_max = ejes.get_xlim()
+    pt_por_dia = ancho_ejes_pt / (x_max - x_min)
+
+    def ancho_texto(valor):
+        return len("{:.0f}".format(valor)) * tamano_letra * 0.7
+
+    separacion = 5                    # distancia del numero al punto (pt)
+    alto_texto = tamano_letra + 1.5   # alto aproximado del numero (pt)
+
+    lados = []
+    for i, v in enumerate(valores):
+        vecinos = [valores[j] for j in (i - 1, i + 1) if 0 <= j < n]
+        promedio_vecinos = sum(vecinos) / len(vecinos) if vecinos else v
+        lados.append(1 if v >= promedio_vecinos else -1)
+
+    desplazamientos = []
+    for i, v in enumerate(valores):
+        desplazamiento = separacion
+        # Solo hace falta separar si los dos numeros chocarian de lado a lado
+        se_tocan_de_lado = i > 0 and (
+            (fechas[i] - fechas[i - 1]).days * pt_por_dia
+            < (ancho_texto(valores[i]) + ancho_texto(valores[i - 1])) / 2 + 1
+        )
+        if se_tocan_de_lado and lados[i] == lados[i - 1]:
+            # Altura (en pt) donde queda cada numero, si se pusiera a la distancia normal
+            altura_anterior = valores[i - 1] / unidades_por_pt + lados[i] * desplazamientos[i - 1]
+            altura_actual = v / unidades_por_pt + lados[i] * desplazamiento
+            if abs(altura_actual - altura_anterior) < alto_texto:
+                # Se aleja este numero lo suficiente para que quede encima
+                # (o debajo) del anterior, sin tocarlo
+                altura_objetivo = altura_anterior + lados[i] * alto_texto
+                desplazamiento = (altura_objetivo - v / unidades_por_pt) * lados[i]
+        desplazamientos.append(desplazamiento)
+
+    for i in range(n):
+        ejes.annotate(
+            "{:.0f}".format(valores[i]),
+            xy=(fechas[i], valores[i]),
+            xytext=(0, lados[i] * desplazamientos[i]), textcoords="offset points",
+            ha="center", va="bottom" if lados[i] == 1 else "top",
+            fontsize=tamano_letra, color=colores[i], fontweight="bold"
+        )
+
+
 def generar_grafico_mes(anio, mes, carpeta_salida=None):
     """
     Genera el grafico del mes indicado, con el mismo estilo del grafico
@@ -120,19 +188,11 @@ def generar_grafico_mes(anio, mes, carpeta_salida=None):
             label="IMAR", zorder=2
         )
 
-    for _, fila in serie.iterrows():
-        color = COLOR_PRECIO_REAL if fila["fuente"] == "Precio Bolsa" else COLOR_IMAR
-        ejes.annotate(
-            "{:.0f}".format(fila["promedio_diario"]),
-            xy=(fila["fecha_dt"], fila["promedio_diario"]),
-            xytext=(0, 10), textcoords="offset points",
-            ha="center", fontsize=8, color=color, fontweight="bold"
-        )
-
     limite_superior = LIMITE_SUPERIOR_MINIMO
     if valor_escasez is not None and valor_escasez * 1.06 > limite_superior:
         limite_superior = valor_escasez * 1.06
     ejes.set_ylim(0, limite_superior)
+    _dibujar_etiquetas(ejes, figura, serie, tamano_letra=8)
 
     if valor_escasez is not None:
         ejes.axhline(
@@ -345,16 +405,6 @@ def generar_grafico_periodo(meses, carpeta_salida=None):
             label="IMAR", zorder=2
         )
 
-    if poner_etiquetas:
-        for _, fila in serie.iterrows():
-            color = COLOR_PRECIO_REAL if fila["fuente"] == "Precio Bolsa" else COLOR_IMAR
-            ejes.annotate(
-                "{:.0f}".format(fila["promedio_diario"]),
-                xy=(fila["fecha_dt"], fila["promedio_diario"]),
-                xytext=(0, 9), textcoords="offset points",
-                ha="center", fontsize=7.5, color=color, fontweight="bold"
-            )
-
     # Precio de Escasez de cada mes, como escalones
     escasez = consultar_todo_precio_escasez()
     valores_escasez = []
@@ -382,6 +432,8 @@ def generar_grafico_periodo(meses, carpeta_salida=None):
     limite_superior = max([LIMITE_SUPERIOR_MINIMO, serie["promedio_diario"].max() * 1.12]
                           + [v * 1.08 for v in valores_escasez])
     ejes.set_ylim(0, limite_superior)
+    if poner_etiquetas:
+        _dibujar_etiquetas(ejes, figura, serie, tamano_letra=7.5)
 
     # Separador y nombre de cada mes
     for anio, mes in meses:

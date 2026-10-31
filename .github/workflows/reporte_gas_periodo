@@ -1,0 +1,84 @@
+# =====================================================================
+# BOTÓN: INFORME DE UN PERIODO (varios meses en línea de tiempo)
+# ---------------------------------------------------------------------
+# No tiene despertador automático: solo funciona cuando lo pides con el
+# botón "Run workflow". Escribes desde qué mes y hasta qué mes, eliges a
+# quién se envía, y en unos minutos llega por correo.
+# No cambia nada de los reportes mensual y semanal.
+# =====================================================================
+
+name: Informe de un periodo
+
+on:
+  workflow_dispatch:
+    inputs:
+      desde:
+        description: "Primer mes (AAAA-MM), por ejemplo 2026-09"
+        required: true
+      hasta:
+        description: "Último mes (AAAA-MM), por ejemplo 2026-10"
+        required: true
+      destinatarios:
+        description: "¿A quién se envía?"
+        type: choice
+        options:
+          - "Grupo del reporte mensual"
+          - "Grupo del reporte semanal"
+        default: "Grupo del reporte mensual"
+
+permissions:
+  contents: write
+
+jobs:
+  periodo:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Bogota
+    defaults:
+      run:
+        working-directory: reporte-gas
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      # Primero traemos los datos más recientes del BEC (los dos mercados).
+      - name: Instalar navegador para el robot
+        run: python -m playwright install --with-deps chromium
+
+      - name: Robot descarga datos del BEC
+        continue-on-error: true
+        run: python descargar_bec.py
+
+      - name: Guardar datos nuevos en el repositorio
+        run: |
+          git config user.name "robot-reporte-gas"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add datos/puntos.xlsx datos/secundario.xlsx
+          if git diff --cached --quiet; then
+            echo "Los datos no cambiaron desde la última vez."
+          else
+            git commit -m "Datos BEC actualizados $(date +%Y-%m-%d)"
+            git pull --rebase
+            git push
+          fi
+
+      - name: Generar y enviar el informe del periodo
+        env:
+          GMAIL_USUARIO: ${{ secrets.CORREO_REMITENTE }}
+          GMAIL_CLAVE_APP: ${{ secrets.CORREO_CONTRASENA_APP }}
+          CORREO_DESTINO: ${{ inputs.destinatarios == 'Grupo del reporte semanal' && secrets.CORREO_DESTINO_SEMANAL || secrets.CORREO_DESTINO_GAS }}
+          DESDE: ${{ inputs.desde }}
+          HASTA: ${{ inputs.hasta }}
+        run: python reporte_periodo.py --desde "$DESDE" --hasta "$HASTA" --enviar
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: informe-periodo
+          path: reporte-gas/salida/
+          if-no-files-found: ignore

@@ -222,6 +222,28 @@ solo el lado derecho en el YAML (`${{ secrets.NOMBRE }}`).
   al del GNL importado del primario (ago-2026: 23,69 vs 24,97), lo que
   sugiere que allí se revende gas importado. Pendiente confirmar con el BEC.
 
+## Informe de un periodo (agregado el 31/10/2026)
+
+- `reporte_periodo.py --desde AAAA-MM --hasta AAAA-MM [--enviar]`: informe
+  puntual (no automático) de varios meses "pegados" en línea de tiempo.
+  Primer uso: septiembre y octubre de 2026.
+- Contenido: mes contra mes (secundario, primario y cruce primario vs.
+  secundario), línea de tiempo diaria del secundario (precio y cantidad,
+  con línea punteada en el cambio de mes y meses sombreados), semana a
+  semana (gráfica + tabla, semanas de los extremos recortadas al periodo),
+  frases por punto (cambio de precio y cantidad, margen, día más caro, día
+  de más volumen, precio máximo pagado) y lista de negociaciones del
+  primario (el BEC no publica el día, solo el mes).
+- Al inicio del informe: un CUADRO RESUMEN por cada mes (`cuadro_mes_html`),
+  con encabezado azul de dos niveles: Punto | Mercado primario (cantidad,
+  precio) | Mercado secundario (cantidad, precio) | Diferencia (secundario
+  vs. primario, ▲ rojo / ▼ verde). "No existe" si el punto no aparece en
+  ese mercado ("No se negocia en el secundario" para el secundario); «–» si
+  existe pero no tuvo negocios ese mes. Diseño pedido por el usuario con una
+  imagen de referencia (31/10/2026).
+- No tiene despertador; se corre a mano o se le puede crear uno con botón
+  manual si el usuario lo pide.
+
 ## Pendientes (en orden sugerido)
 
 1. ~~Prueba real del correo~~: hecha, funcionó.

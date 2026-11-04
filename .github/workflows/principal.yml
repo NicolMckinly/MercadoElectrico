@@ -41,6 +41,18 @@ jobs:
           print('true' if permitido else 'false')
           ")
           echo "ejecutar=$RESULTADO" >> "$GITHUB_OUTPUT"
+          # Horario ampliado SOLO para la revision de convocatorias de Ecopetrol:
+          # todos los dias de 6:00 a.m. a 10:00 p.m. (hora Colombia)
+          ECOPETROL=$(python -c "
+          import datetime
+          from zoneinfo import ZoneInfo
+          ahora = datetime.datetime.now(ZoneInfo('America/Bogota'))
+          print('true' if 6 <= ahora.hour < 22 else 'false')
+          ")
+          echo "ecopetrol=$ECOPETROL" >> "$GITHUB_OUTPUT"
+      - name: Revisar convocatorias de Ecopetrol (fuera del horario normal)
+        if: steps.ventana.outputs.ejecutar != 'true' && steps.ventana.outputs.ecopetrol == 'true'
+        run: python Correos/enviar_alerta_ecopetrol.py
       - name: Ejecutar proceso diario
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python main_diario.py
@@ -61,7 +73,7 @@ jobs:
         if: steps.ventana.outputs.ejecutar == 'true'
         run: python limpiar_reportes_viejos.py
       - name: Guardar cambios en el repositorio
-        if: steps.ventana.outputs.ejecutar == 'true'
+        if: steps.ventana.outputs.ejecutar == 'true' || steps.ventana.outputs.ecopetrol == 'true'
         run: |
           git config --global user.name "Sistema Automatico"
           git config --global user.email "sistema@mercadoelectrico.local"

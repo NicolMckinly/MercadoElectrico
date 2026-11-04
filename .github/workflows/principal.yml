@@ -24,6 +24,7 @@ jobs:
           echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
           echo "RUTA_BASE_DATOS=BaseDatos/mercado_electrico.db" >> .env
           echo "CORREOS_INFORME_DIARIO=${{ secrets.CORREOS_INFORME_DIARIO }}" >> .env
+          echo "CORREOS_ALERTA_ECOPETROL=${{ secrets.CORREOS_ALERTA_ECOPETROL }}" >> .env
       - name: Verificar ventana horaria
         id: ventana
         run: |

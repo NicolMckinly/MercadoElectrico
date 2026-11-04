@@ -249,6 +249,46 @@ def fila_por_sigla(filas, col_sigla, fila_inicio):
 # ---------------------------------------------------------------------------
 # CÁLCULO
 # ---------------------------------------------------------------------------
+def _a_fecha(v):
+    """Convierte lo que venga en la celda de fecha (fecha, número de Excel o texto) a fecha."""
+    if isinstance(v, dt.datetime):
+        return v
+    if isinstance(v, dt.date):
+        return dt.datetime(v.year, v.month, v.day)
+    if isinstance(v, (int, float)) and 20000 < v < 80000:
+        return dt.datetime(1899, 12, 30) + dt.timedelta(days=float(v))
+    if isinstance(v, str):
+        t = v.lower()
+        for i, m in enumerate(MESES):
+            if m.lower() in t:
+                import re
+                a = re.search(r"(19|20)\d{2}", t)
+                if a:
+                    return dt.datetime(int(a.group()), i + 1, 1)
+    return None
+
+
+def fechas_columnas(filas, anio, mes):
+    """Fecha de cada columna de meses (desde la E). Se busca en la fila 3; si XM la
+    dejó como fórmula sin valor, se lee el encabezado de la fila 6
+    ('Octubre de 2026(KWhm)'); y si tampoco, se cuenta desde el mes pedido."""
+    n = max(len(filas[2]), len(filas[5])) - 4
+    out = []
+    for i in range(n):
+        c = 4 + i
+        f = None
+        for fila in (filas[2], filas[5]):
+            if c < len(fila):
+                f = _a_fecha(fila[c])
+                if f:
+                    break
+        if f is None:
+            y, m = anio + (mes - 1 + i) // 12, (mes - 1 + i) % 12 + 1
+            f = dt.datetime(y, m, 1)
+        out.append(f)
+    return out
+
+
 def calcular(anio, mes, carpeta):
     ruta_res = buscar_archivo(carpeta, "resultados", anio, mes)
     ruta_pat = buscar_archivo(carpeta, "patrimonio", anio, mes)
@@ -259,9 +299,8 @@ def calcular(anio, mes, carpeta):
     crom = {h: leer_hoja(wb_res[h]) for h in ("CROM 1", "CROM 2")}
     pat = leer_hoja(wb_pat["PAT"])
 
-    fechas = [crom["CROM 1"][2][4 + i] for i in range(MESES_POR_PROMEDIAR)]  # E3:G3
-    if not all(isinstance(f, dt.datetime) for f in fechas):
-        raise ValueError("No se encontraron las fechas en la fila 3 del archivo de resultados")
+    fechas_todas = fechas_columnas(crom["CROM 1"], anio, mes)
+    fechas = fechas_todas[:MESES_POR_PROMEDIAR]
     if (fechas[0].year, fechas[0].month) != (anio, mes):
         print(f"ADVERTENCIA: el archivo inicia en {fechas[0]:%m/%Y}, no en {mes:02d}/{anio}")
     horas = [calendar.monthrange(f.year, f.month)[1] * 24 for f in fechas]
@@ -277,7 +316,11 @@ def calcular(anio, mes, carpeta):
         for hoja in ("CROM 1", "CROM 2"):
             if s in idx[hoja]:
                 r = idx[hoja][s]
-                vals = [crom[hoja][r - 1][4 + i] or 0 for i in range(MESES_POR_PROMEDIAR)]
+                crudos = [crom[hoja][r - 1][4 + i] for i in range(MESES_POR_PROMEDIAR)]
+                if any(not isinstance(v, (int, float)) for v in crudos):
+                    raise ValueError(f"{nombre} ({sigla}) en {hoja}: valores vacíos o no numéricos "
+                                     f"{crudos}. Revisar el archivo de XM.")
+                vals = crudos
                 fila[hoja] = sum(v / h for v, h in zip(vals, horas)) / len(vals) / 1000
                 fila["ref"][hoja] = r
             else:
@@ -294,7 +337,8 @@ def calcular(anio, mes, carpeta):
 
     if faltantes:
         print("ADVERTENCIA – no se encontraron:\n  " + "\n  ".join(faltantes))
-    return {"anio": anio, "mes": mes, "fechas": fechas, "filas": filas,
+    return {"anio": anio, "mes": mes, "fechas": fechas, "fechas_todas": fechas_todas,
+            "filas": filas,
             "faltantes": faltantes, "crom": crom, "pat": pat,
             "ruta_res": ruta_res, "ruta_pat": ruta_pat}
 
@@ -324,11 +368,10 @@ def generar_excel(datos, salida):
                 if v is not None:
                     ws.cell(r, c, v)
         if nombre.startswith("CROM"):
-            for c in range(5, len(filas[2]) + 1):
-                d = filas[2][c - 1]
-                if isinstance(d, dt.datetime):
-                    ws.cell(3, c).number_format = "mmm-yyyy"
-                    ws.cell(4, c, calendar.monthrange(d.year, d.month)[1])
+            for i, d in enumerate(datos["fechas_todas"]):
+                c = 5 + i
+                ws.cell(3, c, d).number_format = "mmm-yyyy"
+                ws.cell(4, c, calendar.monthrange(d.year, d.month)[1])
             ws.cell(4, 4, "Días del mes")
 
     negrita = Font(name="Arial", bold=True, size=10)

@@ -27,7 +27,15 @@ from enviar_correo import enviar_informe_por_correo
 
 # Destinatarios adicionales que reciben esta alerta, ademas del
 # correo principal configurado en el .env.
-CORREOS_ADICIONALES_ECOPETROL = ["andrea.quintero@tmmorro.com"]
+# La lista NO esta escrita aqui por privacidad: se guarda en el
+# secreto de GitHub "CORREOS_ALERTA_ECOPETROL" (correos separados por comas).
+from dotenv import load_dotenv
+load_dotenv(os.path.join(CARPETA_PROYECTO, ".env"))
+CORREOS_ADICIONALES_ECOPETROL = [
+    correo.strip()
+    for correo in os.getenv("CORREOS_ALERTA_ECOPETROL", "").split(",")
+    if correo.strip()
+]
 
 def _construir_cuerpo_del_correo(convocatorias):
     """

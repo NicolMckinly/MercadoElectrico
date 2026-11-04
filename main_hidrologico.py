@@ -39,7 +39,15 @@ from zona_horaria import ahora_colombia
 
 # Destinatarios adicionales que reciben UNICAMENTE el informe
 # hidrologico, ademas del correo principal configurado en el .env.
-CORREOS_ADICIONALES_HIDROLOGICO = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com", "edwin.simales@tmmorro.com", "jcarrillo@colombiainfra.com"]
+# La lista NO esta escrita aqui por privacidad: se guarda en el
+# secreto de GitHub "CORREOS_INFORME_DIARIO" (correos separados por comas).
+from dotenv import load_dotenv
+load_dotenv(os.path.join(CARPETA_PROYECTO, ".env"))
+CORREOS_ADICIONALES_HIDROLOGICO = [
+    correo.strip()
+    for correo in os.getenv("CORREOS_INFORME_DIARIO", "").split(",")
+    if correo.strip()
+]
 
 
 def ejecutar_proceso_hidrologico():

@@ -6,7 +6,7 @@ Qué hace:
   1. Descarga de la página de XM los 2 archivos del mes publicado
      (ResultadosCROMDefinitivo_<Mes><Año>.xlsx y PatrimonioCROM_<MM><Año>.xlsx).
   2. Calcula para cada agente:
-       CROM 1 / CROM 2 (MWh) = promedio de los 3 primeros meses publicados de
+       CROM 1 / CROM 2 (MWh) = promedio, desde el mes publicado hasta diciembre de ese año, de
                                (kWh-mes / horas del mes) / 1000
        Patrimonio (miles de millones COP) = PAT / 1.000.000.000
   3. Genera el Excel de soporte (hoja "Resumen" con fórmulas trazables).
@@ -88,7 +88,10 @@ _DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGEN_RESPALDO = os.path.join(_DIR, "respaldo_capital.png")
 IMAGEN_FIRMA = os.path.join(_DIR, "firma.jpg")
 
-MESES_POR_PROMEDIAR = 3  # columnas E, F, G del archivo de resultados
+# Periodo del cálculo y del asunto: desde el mes publicado hasta DICIEMBRE de ese
+# mismo año (Oct -> Oct-Dic = 3 meses; Ago -> Ago-Dic = 5; Ene -> Ene-Dic = 12).
+def meses_hasta_diciembre(fecha_inicio):
+    return 13 - fecha_inicio.month
 
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
          "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -300,7 +303,9 @@ def calcular(anio, mes, carpeta):
     pat = leer_hoja(wb_pat["PAT"])
 
     fechas_todas = fechas_columnas(crom["CROM 1"], anio, mes)
-    fechas = fechas_todas[:MESES_POR_PROMEDIAR]
+    n_meses = meses_hasta_diciembre(fechas_todas[0])
+    fechas = fechas_todas[:n_meses]
+    print(f"Periodo del cálculo: {periodo_texto(fechas)} ({n_meses} meses)")
     if (fechas[0].year, fechas[0].month) != (anio, mes):
         print(f"ADVERTENCIA: el archivo inicia en {fechas[0]:%m/%Y}, no en {mes:02d}/{anio}")
     horas = [calendar.monthrange(f.year, f.month)[1] * 24 for f in fechas]
@@ -316,7 +321,7 @@ def calcular(anio, mes, carpeta):
         for hoja in ("CROM 1", "CROM 2"):
             if s in idx[hoja]:
                 r = idx[hoja][s]
-                crudos = [crom[hoja][r - 1][4 + i] for i in range(MESES_POR_PROMEDIAR)]
+                crudos = [crom[hoja][r - 1][4 + i] for i in range(n_meses)]
                 if any(not isinstance(v, (int, float)) for v in crudos):
                     raise ValueError(f"{nombre} ({sigla}) en {hoja}: valores vacíos o no numéricos "
                                      f"{crudos}. Revisar el archivo de XM.")
@@ -338,14 +343,17 @@ def calcular(anio, mes, carpeta):
     if faltantes:
         print("ADVERTENCIA – no se encontraron:\n  " + "\n  ".join(faltantes))
     return {"anio": anio, "mes": mes, "fechas": fechas, "fechas_todas": fechas_todas,
+            "n_meses": n_meses,
             "filas": filas,
             "faltantes": faltantes, "crom": crom, "pat": pat,
             "ruta_res": ruta_res, "ruta_pat": ruta_pat}
 
 
 def periodo_texto(fechas):
-    """'Oct-Dic 2026'  o  'Nov 2026-Ene 2027' si cruza de año."""
+    """'Oct-Dic 2026', 'Ene-Dic 2027' o 'Dic 2026' si es un solo mes."""
     a, b = fechas[0], fechas[-1]
+    if a == b:
+        return f"{ABREV[a.month - 1]} {a.year}"
     if a.year == b.year:
         return f"{ABREV[a.month - 1]}-{ABREV[b.month - 1]} {a.year}"
     return f"{ABREV[a.month - 1]} {a.year}-{ABREV[b.month - 1]} {b.year}"
@@ -396,7 +404,7 @@ def generar_excel(datos, salida):
             cell.font, cell.alignment, cell.border, cell.fill = negrita, centro, borde, gris
     resumen.row_dimensions[6].height = 30
 
-    cols = [get_column_letter(5 + i) for i in range(MESES_POR_PROMEDIAR)]
+    cols = [get_column_letter(5 + i) for i in range(datos["n_meses"])]
 
     def formula_crom(hoja, fila):
         partes = ",".join(f"'{hoja}'!{c}{fila}/('{hoja}'!{c}$4*24)" for c in cols)
@@ -423,7 +431,8 @@ def generar_excel(datos, salida):
     resumen.cell(r + 1, 3, f"Fuente: XM – Valores CROM definitivos, {MESES[mes - 1]} {anio} "
                  f"({os.path.basename(datos['ruta_res'])}, "
                  f"{os.path.basename(datos['ruta_pat'])}).").font = nota
-    resumen.cell(r + 2, 3, f"CROM: promedio de los {MESES_POR_PROMEDIAR} primeros meses publicados de "
+    resumen.cell(r + 2, 3, f"CROM: promedio {periodo_texto(datos['fechas'])} "
+                 f"({datos['n_meses']} meses) de "
                  "(kWh-mes ÷ horas del mes) ÷ 1.000. Patrimonio: PAT ÷ 10^9.").font = nota
     for col, w in (("A", 3), ("B", 3), ("C", 28), ("D", 14), ("E", 14), ("F", 26)):
         resumen.column_dimensions[col].width = w

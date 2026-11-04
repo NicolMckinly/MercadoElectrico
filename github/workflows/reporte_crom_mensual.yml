@@ -1,0 +1,107 @@
+# =====================================================================
+# EL "DESPERTADOR" DE GITHUB (GitHub Actions) - Reporte mensual CROM/PAT
+# ---------------------------------------------------------------------
+# Orden de trabajo:
+#   1. ¿Hoy es el 1er o 2do día hábil del mes? Si no, se vuelve a dormir.
+#   2. El robot entra a XM (Valores CROM definitivos), abre año -> mes M-1
+#      y descarga ResultadosCROMDefinitivo y PatrimonioCROM.
+#   3. Calcula CROM 1, CROM 2 y Patrimonio, arma el Excel y envía el correo.
+#   4. Anota el mes en reporte-crom/enviados.log para no enviarlo dos veces.
+#   5. Guarda el Excel y los archivos de XM en la pestaña Actions.
+# =====================================================================
+
+name: Reporte mensual CROM-PAT
+
+on:
+  # Despertador automático: días 1 al 10 de cada mes, 9:00 a.m. Colombia.
+  # El programa solo trabaja el 1er y 2do día hábil; los demás días no hace nada.
+  schedule:
+    - cron: "0 14 1-10 * *"
+
+  # Botón manual "Run workflow".
+  workflow_dispatch:
+    inputs:
+      anio:
+        description: "Año publicado (vacío = mes anterior al actual)"
+        required: false
+        default: ""
+      mes:
+        description: "Mes publicado 1-12 (vacío = mes anterior al actual)"
+        required: false
+        default: ""
+      correo:
+        description: "prueba = solo al Gmail remitente · enviar = destinatarios reales · no = solo Excel"
+        type: choice
+        options: [prueba, enviar, "no"]
+        default: prueba
+
+# Permiso para que el robot pueda guardar enviados.log en el repositorio.
+permissions:
+  contents: write
+
+jobs:
+  generar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: America/Bogota
+      CORREO_USUARIO: ${{ secrets.CORREO_REMITENTE }}
+      CORREO_CLAVE: ${{ secrets.CORREO_CONTRASENA_CROM }}
+      CORREO_DESTINO_CROM: ${{ secrets.CORREO_DESTINO_CROM }}
+      CORREO_CC_CROM: ${{ secrets.CORREO_CC_CROM }}
+      CORREO_RESPONDER_A_CROM: ${{ secrets.CORREO_RESPONDER_A_CROM }}
+    # El proyecto CROM vive en la carpeta reporte-crom del repositorio.
+    defaults:
+      run:
+        working-directory: reporte-crom
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar librerías y navegador del robot
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Ejecutar (automático)
+        if: github.event_name == 'schedule'
+        run: python crom_reporte.py --auto
+
+      - name: Ejecutar (manual)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ANIO: ${{ github.event.inputs.anio }}
+          MES: ${{ github.event.inputs.mes }}
+          MODO: ${{ github.event.inputs.correo }}
+        run: |
+          ARGS="--descargar --correo $MODO"
+          if [ -n "$ANIO" ]; then ARGS="$ARGS --anio $ANIO"; fi
+          if [ -n "$MES" ]; then ARGS="$ARGS --mes $MES"; fi
+          python crom_reporte.py $ARGS
+
+      - name: Anotar el mes enviado
+        if: success()
+        run: |
+          git config user.name "robot-reporte-crom"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add enviados.log
+          if git diff --cached --quiet; then
+            echo "No hubo envío nuevo."
+          else
+            git commit -m "CROM: registro de envío $(date +%Y-%m)"
+            git pull --rebase
+            git push
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reporte-crom
+          path: |
+            reporte-crom/salida/
+            reporte-crom/descargas/
+          if-no-files-found: ignore
+          retention-days: 90

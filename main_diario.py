@@ -49,7 +49,15 @@ from zona_horaria import ahora_colombia
 # Destinatarios adicionales que reciben UNICAMENTE el informe diario
 # (que incluye el grafico y la tabla del IMAR), ademas del correo
 # principal configurado en el .env.
-CORREOS_ADICIONALES_IMAR = ["andrea.quintero@tmmorro.com", "fabian.barahona@tmmorro.com", "albeiro.rengifo@tmmorro.com", "edwin.simales@tmmorro.com", "jcarrillo@colombiainfra.com", "monica.diaz@tmmorro.com", "edinsson.alarcon@tmmorro.com"]
+# La lista NO esta escrita aqui por privacidad: se guarda en el
+# secreto de GitHub "CORREOS_INFORME_DIARIO" (correos separados por comas).
+from dotenv import load_dotenv
+load_dotenv(os.path.join(CARPETA_PROYECTO, ".env"))
+CORREOS_ADICIONALES_IMAR = [
+    correo.strip()
+    for correo in os.getenv("CORREOS_INFORME_DIARIO", "").split(",")
+    if correo.strip()
+]
 
 
 def ejecutar_proceso_diario():

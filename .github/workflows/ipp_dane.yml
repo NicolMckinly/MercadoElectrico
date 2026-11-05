@@ -2,7 +2,9 @@ name: Alerta IPP DANE
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * 3-9 * *'
+    # Cada 15 min del 4 al 9 de cada mes, hora Colombia (UTC-5)
+    - cron: '7,22,37,52 5-23 4-9 * *'
+    - cron: '7,22,37,52 0-4 5-10 * *'
 jobs:
   revisar_ipp:
     runs-on: ubuntu-latest

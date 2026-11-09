@@ -1,17 +1,3 @@
-# Contexto del proyecto: reporte mensual de contratos de gas natural
-
-Este documento resume todo lo hecho hasta ahora, para continuar el trabajo
-en otra conversación o con otra persona. Última actualización: 23/10/2026.
-
-## Cómo trabajar conmigo (preferencias del usuario)
-
-- Responder siempre en **español**. El usuario está en Colombia.
-- **Explicar todo muy al detalle, como a un estudiante de 7.º grado**:
-  con comparaciones sencillas, paso a paso, explicando qué hace cada
-  archivo y cada parte importante del código, y cómo probarlo.
-- El usuario tiene cuenta de **GitHub** y usará **GitHub Actions**.
-- El correo de envío es **Gmail**, con una llave ya guardada en GitHub Secrets.
-
 ## Objetivo
 
 Hacer seguimiento al mercado de gas natural de Colombia, por **punto de

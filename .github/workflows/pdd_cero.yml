@@ -1,0 +1,58 @@
+# =====================================================================
+# PDD EN CERO - A PEDIDO
+# ---------------------------------------------------------------------
+# No corre solo. Se usa desde GitHub:
+#   Actions -> "PDD en cero - a pedido" -> Run workflow -> Run workflow
+# Trae el IMAR de manana de XM, arma el cuadro del PDD con despacho 0
+# y te lo manda a tu correo corporativo con el borrador .eml listo
+# para enviar desde Outlook.
+# =====================================================================
+
+name: PDD en cero - a pedido
+
+on:
+  workflow_dispatch:
+    inputs:
+      fecha:
+        description: "Fecha del PDD (AAAA-MM-DD). Dejar vacio = manana"
+        required: false
+        default: ""
+      correo:
+        description: "Correo que lo recibe. Dejar vacio = nicol.leyton@tmmorro.com"
+        required: false
+        default: ""
+
+jobs:
+  pdd:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          pip install requests python-dotenv
+
+      - name: Crear archivo de credenciales
+        run: |
+          echo "CORREO_REMITENTE=${{ secrets.CORREO_REMITENTE }}" >> .env
+          echo "CORREO_CONTRASENA_APP=${{ secrets.CORREO_CONTRASENA_APP }}" >> .env
+
+      - name: Armar y enviar el PDD
+        env:
+          FECHA: ${{ github.event.inputs.fecha }}
+          CORREO: ${{ github.event.inputs.correo }}
+        run: python enviar_pdd_cero.py --fecha "$FECHA" --correo "$CORREO"
+
+      - name: Dejar el borrador descargable
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: borrador-pdd
+          path: PDD_*.eml
+          if-no-files-found: ignore
